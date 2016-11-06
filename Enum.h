@@ -9,7 +9,7 @@
 
 // example: enumStrs(Flip, "FlipNone","FlipV","FlipH")
 // NOTE: enum should begin with 0 and auto-increased
-#define enumStrs(Type, ...) \
+#define EnumStrs(Type, ...) \
     template<> const char* _Enum<Type>::items[] = { __VA_ARGS__, 0 }
 
 template<typename T>
