@@ -7,10 +7,10 @@
 // str to enum
 //==========================================================
 
-// example: enumStrs(Flip, "FlipNone","FlipV","FlipH")
+// example: EnumStrs(Flip, "FlipNone","FlipV","FlipH")
 // NOTE: enum should begin with 0 and auto-increased
 #define EnumStrs(Type, ...) \
-    template<> const char* _Enum<Type>::items[] = { __VA_ARGS__, 0 }
+    template<> const char* _Enum<Type>::items[] = { __VA_ARGS__, 0 };
 
 template<typename T>
 struct _Enum
@@ -19,10 +19,10 @@ struct _Enum
 };
 
 template<typename T>
-const char* enum2Str(T e) { return _Enum<T>::items[(int)e]; }
+const char* Enum2Str(T e) { return _Enum<T>::items[(int)e]; }
 
 template<typename T>
-T str2Enum(const char* str, T defValue)
+T Str2Enum(const char* str, T defValue)
 {
     int i = 0;
     for ( const char** p = _Enum<T>::items; *p; p++, i++ ) {
@@ -40,7 +40,7 @@ operator >> (JsonReader& in, T& v)
 {
     std::string s;
     if ( !( in >> s ) ) return false;
-    v = str2Enum(s.c_str(), T(-1));
+    v = Str2Enum(s.c_str(), T(-1));
     return v != T(-1);
 }
 #endif
