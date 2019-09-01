@@ -2,6 +2,8 @@
 #include <assert.h>
 #include <string.h>
 
+#define DEF_ENUM2STR
+
 //==========================================================
 // str to enum
 //==========================================================
@@ -50,32 +52,3 @@ public:
     val &= ~(1 << static_cast<Storage>(e));
   }
 };
-
-#ifdef JSON_READER
-
-class JsonReader;
-
-template <typename T>
-typename std::enable_if<std::is_enum<T>::value, bool>::type
-operator>>(JsonReader &in, T &v) {
-  std::string s;
-  if (!(in >> s))
-    return false;
-  v = Str2Enum(s.c_str(), T(-1));
-  return v != T(-1);
-}
-
-template <typename T> bool operator>>(JsonReader &in, Flags<T> &v) {
-  if (!in.expectArrayStart())
-    return false;
-  for (v.clear(); !in.expectArrayEnd();) {
-    T t;
-    if (in >> t) {
-      v.setBit(t);
-    } else
-      return false;
-  }
-  return true;
-}
-
-#endif
