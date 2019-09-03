@@ -2,8 +2,16 @@
 #include <iostream>
 #include <sstream>
 
-template <typename T> struct Meta {
-  char *desc;
+struct Meta {
+  const char *desc;
+  std::string to_string() {
+    std::ostringstream o;
+    o << "desc:" << desc;
+    return o.str();
+  }
+};
+
+template <typename T> struct NumberMeta : Meta {
   T minV, maxV;
   std::string to_string() {
     std::ostringstream o;
@@ -14,20 +22,23 @@ template <typename T> struct Meta {
 
 // using namespace tref;
 
-struct Data {
+template <typename T> struct Data {
+  T t;
+
   int x, y;
   std::string name{"boo"};
-  RefRoot(Data, RefFieldMeta(x, Meta<int>{"pos x", 1, 100}),
-          RefFieldMeta(y, Meta<int>{"pos y", 1, 100}),
-          RefFieldMeta(name, Meta<int>{"entity name", 1, 100}));
+  RefRoot(Data, RefFieldMeta(x, NumberMeta<int>{"pos x", 1, 100}),
+          RefFieldMeta(y, NumberMeta<int>{"pos y", 1, 100}),
+          RefFieldMeta(name, Meta{"entity name"}),
+          RefFieldMeta(t, Meta{"test"}));
 };
 
-struct Child : Data {
+struct Child : Data<int> {
   float z;
   RefType(Child, RefField(z));
 };
 
-struct Child2 : Data {
+struct Child2 : Data<int> {
   float zz;
   RefType(Child2, RefField(zz));
 };
@@ -51,21 +62,22 @@ template <class T> void dumpTree() {
 
 void TestRef() {
   using namespace tref;
-  dumpTree<Data>();
+  dumpTree<Data<int>>();
 
   puts("==== subclass details Data ====");
-  auto tp = tref::subclassOf<Data>();
+  auto tp = tref::subclassOf<Data<int>>();
   tuple_for(tp, [](auto c) {
     puts(c->__name);
-    using T = std::remove_reference_t<decltype(*c)>;
+    using T = remove_pointer_t<decltype(c)>;
 
     int cnt = 1;
     tuple_for(fieldsOf<T>(), [&](auto &p) {
       auto [name, v, meta] = p;
-      if constexpr (std::is_same_v<decltype(meta), Meta<int>>) {
-        printf("field %d:%s, %s\n", cnt, name, meta.to_string().c_str());
+      if constexpr (std::is_base_of_v<Meta, decltype(meta)>) {
+        printf("field %d:%s, type:%s, %s\n", cnt, name, typeid(v).name(),
+               meta.to_string().c_str());
       } else {
-        printf("field %d:%s\n", cnt, name);
+        printf("field %d:%s, type:%s\n", cnt, name, typeid(v).name());
       }
       cnt++;
       return true;
@@ -84,7 +96,7 @@ void TestRef() {
   auto &o = d[0];
   tuple_for(fieldsOf<Child>(), [&](auto &p) {
     auto [name, v, meta] = p;
-    if constexpr (std::is_same_v<decltype(meta), Meta<int>>) {
+    if constexpr (std::is_base_of_v<Meta, decltype(meta)>) {
       printf("field %d:%s, %s,", cnt, name, meta.to_string().c_str());
     } else {
       printf("field %d:%s,", cnt, name);
