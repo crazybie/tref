@@ -23,29 +23,37 @@ template <typename T> struct NumberMeta : Meta {
 // using namespace tref;
 
 template <typename T> struct Data {
+  RefRoot(Data);
+
   T t;
+  RefFieldMeta(t, Meta{"test"});
 
   int x, y;
+  RefFieldMeta(x, NumberMeta<int>{"pos x", 1, 100});
+  RefFieldMeta(y, NumberMeta<int>{"pos y", 1, 100});
+
   std::string name{"boo"};
-  RefRoot(Data, RefFieldMeta(x, NumberMeta<int>{"pos x", 1, 100}),
-          RefFieldMeta(y, NumberMeta<int>{"pos y", 1, 100}),
-          RefFieldMeta(name, Meta{"entity name"}),
-          RefFieldMeta(t, Meta{"test"}));
+  RefFieldMeta(name, Meta{"entity name"});
 };
 
+static_assert(tref::IsReflected<Data<int>>::value);
+
 struct Child : Data<int> {
+  RefType(Child);
   float z;
-  RefType(Child, RefField(z));
+  RefField(z);
 };
 
 struct Child2 : Data<int> {
+  RefType(Child2);
   float zz;
-  RefType(Child2, RefField(zz));
+  RefField(zz);
 };
 
 struct SubChild : Child2 {
+  RefType(SubChild);
   const char *ff = "subchild";
-  RefType(SubChild, RefField(ff));
+  RefField(ff);
 };
 
 template <class T> void dumpTree() {
@@ -61,18 +69,17 @@ template <class T> void dumpTree() {
 }
 
 void TestRef() {
+
   using namespace tref;
   dumpTree<Data<int>>();
 
   puts("==== subclass details Data ====");
-  auto tp = tref::subclassOf<Data<int>>();
-  tuple_for(tp, [](auto c) {
+  eachSubClass<Data<int>>([](auto c, int level) {
     puts(c->__name);
     using T = remove_pointer_t<decltype(c)>;
 
     int cnt = 1;
-    tuple_for(fieldsOf<T>(), [&](auto &p) {
-      auto [name, v, meta] = p;
+    eachFields<T>([&](auto name, auto v, auto meta, int level) {
       if constexpr (std::is_base_of_v<Meta, decltype(meta)>) {
         printf("field %d:%s, type:%s, %s\n", cnt, name, typeid(v).name(),
                meta.to_string().c_str());
@@ -82,6 +89,7 @@ void TestRef() {
       cnt++;
       return true;
     });
+
     return true;
   });
 
@@ -94,8 +102,7 @@ void TestRef() {
   puts("==== field values of Child ====");
   int cnt = 1;
   auto &o = d[0];
-  tuple_for(fieldsOf<Child>(), [&](auto &p) {
-    auto [name, v, meta] = p;
+  eachFields<Child>([&](auto name, auto v, auto meta, int level) {
     if constexpr (std::is_base_of_v<Meta, decltype(meta)>) {
       printf("field %d:%s, %s,", cnt, name, meta.to_string().c_str());
     } else {
