@@ -1,4 +1,5 @@
 #include "pch.h"
+
 #include <iostream>
 #include <sstream>
 
@@ -23,37 +24,40 @@ template <typename T> struct NumberMeta : Meta {
 // using namespace tref;
 
 template <typename T> struct Data {
-  RefRoot(Data);
+  ReflectedTypeRoot(Data);
 
   T t;
-  RefFieldMeta(t, Meta{"test"});
+  ReflectedMeta(t, Meta{"test"});
 
   int x, y;
-  RefFieldMeta(x, NumberMeta<int>{"pos x", 1, 100});
-  RefFieldMeta(y, NumberMeta<int>{"pos y", 1, 100});
+  ReflectedMeta(x, NumberMeta<int>{"pos x", 1, 100});
+  ReflectedMeta(y, NumberMeta<int>{"pos y", 1, 100});
 
   std::string name{"boo"};
-  RefFieldMeta(name, Meta{"entity name"});
+  ReflectedMeta(name, Meta{"entity name"});
 };
 
 static_assert(tref::IsReflected<Data<int>>::value);
 
 struct Child : Data<int> {
-  RefType(Child);
+  ReflectedType(Child);
+
   float z;
-  RefField(z);
+  Reflected(z);
 };
 
 struct Child2 : Data<int> {
-  RefType(Child2);
+  ReflectedType(Child2);
+
   float zz;
-  RefField(zz);
+  Reflected(zz);
 };
 
 struct SubChild : Child2 {
-  RefType(SubChild);
+  ReflectedType(SubChild);
+
   const char *ff = "subchild";
-  RefField(ff);
+  Reflected(ff);
 };
 
 template <class T> void dumpTree() {
