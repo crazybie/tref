@@ -5,6 +5,7 @@
 
 struct Meta {
   const char *desc;
+
   std::string to_string() {
     std::ostringstream o;
     o << "desc:" << desc;
@@ -14,6 +15,10 @@ struct Meta {
 
 template <typename T> struct NumberMeta : Meta {
   T minV, maxV;
+
+  constexpr NumberMeta(const char *desc_, T minV_, T maxV_)
+      : Meta{desc_}, minV(minV_), maxV(maxV_) {}
+
   std::string to_string() {
     std::ostringstream o;
     o << "desc:" << desc << ",range:[" << minV << "," << maxV << "]";
@@ -30,8 +35,8 @@ template <typename T> struct Data {
   ReflectedMeta(t, Meta{"test"});
 
   int x, y;
-  ReflectedMeta(x, NumberMeta<int>{"pos x", 1, 100});
-  ReflectedMeta(y, NumberMeta<int>{"pos y", 1, 100});
+  ReflectedMeta(x, NumberMeta{"pos x", 1, 100});
+  ReflectedMeta(y, NumberMeta{"pos y", 1, 100});
 
   std::string name{"boo"};
   ReflectedMeta(name, Meta{"entity name"});
