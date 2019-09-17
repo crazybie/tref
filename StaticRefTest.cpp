@@ -1,7 +1,10 @@
 #include "pch.h"
 
+#include <functional>
 #include <iostream>
 #include <sstream>
+
+using namespace std;
 
 struct Meta {
   const char *desc;
@@ -24,6 +27,18 @@ template <typename T> struct NumberMeta : Meta {
     o << "desc:" << desc << ",range:[" << minV << "," << maxV << "]";
     return o.str();
   }
+};
+
+template <typename T, typename... Args> struct ValidatableFuncMeta {
+  using Validate = bool (*)(T &, Args...);
+  Validate validate = nullptr;
+
+  constexpr ValidatableFuncMeta(Validate vv) : validate(vv) {}
+  std::string to_string() { return ""; };
+};
+
+struct HookableFuncMeta {
+  constexpr HookableFuncMeta() {}
 };
 
 // using namespace tref;
@@ -63,6 +78,18 @@ struct SubChild : Child2 {
 
   const char *ff = "subchild";
   Reflected(ff);
+
+  void func(int a) { printf("func called with arg:%d\n", a); }
+  static bool func_validate(self &thiz, int a) {
+    printf("do validation with arg:%d", a);
+    return a > 0;
+  }
+  ReflectedMeta(func, ValidatableFuncMeta{func_validate});
+
+  function<void(self &, int)> hookableFunc = [](self &thiz, int a) {
+    printf("hookable func called with arg: %s, %d\n", thiz.ff, a);
+  };
+  ReflectedMeta(hookableFunc, HookableFuncMeta{});
 };
 
 template <class T> void dumpTree() {
@@ -77,10 +104,37 @@ template <class T> void dumpTree() {
   puts("============");
 }
 
-void TestRef() {
-
+void TestHookable() {
   using namespace tref;
-  dumpTree<Data<int>>();
+  SubChild s;
+
+  // call validatable functions
+  eachFields<SubChild>([&](auto name, auto v, auto meta, int level) {
+    if constexpr (std::is_base_of_v<ValidatableFuncMeta<SubChild, int>,
+                                    decltype(meta)>) {
+      auto arg = -1;
+      if (meta.validate(s, arg)) {
+        (s.*v)(arg);
+      }
+    }
+  });
+
+  // call hookable functions
+  eachFields<SubChild>([&](auto name, auto v, auto meta, int level) {
+    if constexpr (std::is_base_of_v<HookableFuncMeta, decltype(meta)>) {
+      auto f = s.*v;
+      s.*v = [ff = move(f)](SubChild &thiz, int a) {
+        printf("before hook:%d\n", a);
+        ff(thiz, a);
+      };
+    }
+    return true;
+  });
+  s.hookableFunc(s, 10);
+}
+
+void dumpDetails() {
+  using namespace tref;
 
   puts("==== subclass details Data ====");
   eachSubClass<Data<int>>([](auto c, int level) {
@@ -121,4 +175,10 @@ void TestRef() {
     cnt++;
     return true;
   });
+}
+
+void TestRef() {
+  dumpTree<Data<int>>();
+  dumpDetails();
+  TestHookable();
 }
