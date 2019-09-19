@@ -94,11 +94,11 @@ struct SubChild : Child2 {
 
 template <class T> void dumpTree() {
   using namespace tref;
-  printf("===== All Subclass of %s====\n", T::__name);
+  printf("===== All Subclass of %s====\n", get<0>(T::__meta));
   eachSubClass<T>([&](auto *c, int level) {
     for (int i = 0; i < 4 * level; i++)
       printf(" ");
-    printf("%s\n", c->__name);
+    printf("%s\n", get<0>(c->__meta));
     return true;
   });
   puts("============");
@@ -110,13 +110,14 @@ void TestHookable() {
 
   // call validatable functions
   eachFields<SubChild>([&](auto name, auto v, auto meta, int level) {
-    if constexpr (std::is_base_of_v<ValidatableFuncMeta<SubChild, int>,
-                                    decltype(meta)>) {
+    using ValidateFunc = ValidatableFuncMeta<SubChild, int>;
+    if constexpr (std::is_base_of_v<ValidateFunc, decltype(meta)>) {
       auto arg = -1;
       if (meta.validate(s, arg)) {
         (s.*v)(arg);
       }
     }
+    return true;
   });
 
   // call hookable functions
@@ -138,7 +139,8 @@ void dumpDetails() {
 
   puts("==== subclass details Data ====");
   eachSubClass<Data<int>>([](auto c, int level) {
-    puts(c->__name);
+    auto [clsName, file, line] = c->__meta;
+    printf("type:%s, file:%s(%d)\n", clsName, file, line);
     using T = remove_pointer_t<decltype(c)>;
 
     int cnt = 1;

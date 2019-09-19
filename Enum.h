@@ -4,11 +4,12 @@
 
 #define DEF_ENUM2STR
 
+// example: EnumStrs(Flip, "FlipNone","FlipV","FlipH")
+
 //==========================================================
 // str to enum
 //==========================================================
 
-// example: EnumStrs(Flip, "FlipNone","FlipV","FlipH")
 // NOTE: enum should begin with 0 and auto-increased
 #define EnumStrs(Type, ...)                                                    \
   template <> const char *_Enum<Type>::items[] = {__VA_ARGS__, 0};
@@ -29,25 +30,25 @@ template <typename T> T Str2Enum(const char *str, T defValue) {
 }
 
 //==========================================================
-// flags serialization
+// flags
 //==========================================================
 
 template <typename T, typename Storage = unsigned int> class Flags {
-  static_assert(std::is_enum<T>::value == true, "type is not a enum");
+  static_assert(std::is_enum_v<T>);
   Storage val;
 
 public:
-  Flags() : val(0) {}
-  void clear() { val = 0; }
-  bool hasBit(T e) {
+  constexpr Flags() : val(0) {}
+  constexpr void clear() { val = 0; }
+  constexpr bool hasBit(T e) {
     assert(e < sizeof(val) * 8);
     return (val & (1 << static_cast<Storage>(e))) != 0;
   }
-  void setBit(T e) {
+  constexpr void setBit(T e) {
     assert(e < sizeof(val) * 8);
     val |= (1 << static_cast<Storage>(e));
   }
-  void unsetBit(T e) {
+  constexpr void unsetBit(T e) {
     assert(e < sizeof(val) * 8);
     val &= ~(1 << static_cast<Storage>(e));
   }
