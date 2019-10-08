@@ -7,7 +7,7 @@
 using namespace std;
 
 struct Meta {
-  const char *desc;
+  const char* desc;
 
   std::string to_string() {
     std::ostringstream o;
@@ -16,10 +16,11 @@ struct Meta {
   }
 };
 
-template <typename T> struct NumberMeta : Meta {
+template <typename T>
+struct NumberMeta : Meta {
   T minV, maxV;
 
-  constexpr NumberMeta(const char *desc_, T minV_, T maxV_)
+  constexpr NumberMeta(const char* desc_, T minV_, T maxV_)
       : Meta{desc_}, minV(minV_), maxV(maxV_) {}
 
   std::string to_string() {
@@ -29,8 +30,9 @@ template <typename T> struct NumberMeta : Meta {
   }
 };
 
-template <typename T, typename... Args> struct ValidatableFuncMeta {
-  using Validate = bool (*)(T &, Args...);
+template <typename T, typename... Args>
+struct ValidatableFuncMeta {
+  using Validate = bool (*)(T&, Args...);
   Validate validate = nullptr;
 
   constexpr ValidatableFuncMeta(Validate vv) : validate(vv) {}
@@ -43,7 +45,8 @@ struct HookableFuncMeta {
 
 // using namespace tref;
 
-template <typename T> struct Data {
+template <typename T>
+struct Data {
   ReflectedTypeRoot(Data);
 
   T t;
@@ -76,28 +79,28 @@ struct Child2 : Data<int> {
 struct SubChild : Child2 {
   ReflectedType(SubChild);
 
-  const char *ff = "subchild";
+  const char* ff = "subchild";
   Reflected(ff);
 
   void func(int a) { printf("func called with arg:%d\n", a); }
-  static bool func_validate(self &thiz, int a) {
+  static bool func_validate(self& thiz, int a) {
     printf("do validation with arg:%d", a);
     return a > 0;
   }
   ReflectedMeta(func, ValidatableFuncMeta{func_validate});
 
-  function<void(self &, int)> hookableFunc = [](self &thiz, int a) {
+  function<void(self&, int)> hookableFunc = [](self& thiz, int a) {
     printf("hookable func called with arg: %s, %d\n", thiz.ff, a);
   };
   ReflectedMeta(hookableFunc, HookableFuncMeta{});
 };
 
-template <class T> void dumpTree() {
+template <class T>
+void dumpTree() {
   using namespace tref;
   printf("===== All Subclass of %s====\n", get<0>(T::__meta));
-  eachSubClass<T>([&](auto *c, int level) {
-    for (int i = 0; i < 4 * level; i++)
-      printf(" ");
+  eachSubClass<T>([&](auto* c, int level) {
+    for (int i = 0; i < 4 * level; i++) printf(" ");
     printf("%s\n", get<0>(c->__meta));
     return true;
   });
@@ -124,7 +127,7 @@ void TestHookable() {
   eachFields<SubChild>([&](auto name, auto v, auto meta, int level) {
     if constexpr (std::is_base_of_v<HookableFuncMeta, decltype(meta)>) {
       auto f = s.*v;
-      s.*v = [ff = move(f)](SubChild &thiz, int a) {
+      s.*v = [ff = move(f)](SubChild& thiz, int a) {
         printf("before hook:%d\n", a);
         ff(thiz, a);
       };
@@ -166,7 +169,7 @@ void dumpDetails() {
 
   puts("==== field values of Child ====");
   int cnt = 1;
-  auto &o = d[0];
+  auto& o = d[0];
   eachFields<Child>([&](auto name, auto v, auto meta, int level) {
     if constexpr (std::is_base_of_v<Meta, decltype(meta)>) {
       printf("field %d:%s, %s,", cnt, name, meta.to_string().c_str());
