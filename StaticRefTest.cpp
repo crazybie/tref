@@ -50,7 +50,7 @@ struct Base {
 };
 
 template <typename T>
-struct Data {
+struct Data : Base {
   ReflectedType(Data);
 
   T t;
@@ -101,13 +101,13 @@ struct SubChild : Child2 {
 
 static_assert(string_view("test").length() == 4);
 
-constexpr bool hasClass(const string_view &name) {
+constexpr bool hasClass(const string_view& name) {
   using namespace tref;
-  return ([&](auto *cls, int) { return name == get<0>(cls->__meta); })(
-      (SubChild *)0, 0);
+  return ([&](auto* cls, int) { return name == get<0>(cls->__meta); })(
+      (SubChild*)0, 0);
 }
 
-static_assert(hasClass("SubChild2"));
+static_assert(hasClass("SubChild"));
 
 template <class T>
 void dumpTree() {
