@@ -45,9 +45,13 @@ struct HookableFuncMeta {
 
 // using namespace tref;
 
+struct Base {
+  ReflectedTypeRoot(Base);
+};
+
 template <typename T>
 struct Data {
-  ReflectedTypeRoot(Data);
+  ReflectedType(Data);
 
   T t;
   ReflectedMeta(t, Meta{"test"});
@@ -94,6 +98,16 @@ struct SubChild : Child2 {
   };
   ReflectedMeta(hookableFunc, HookableFuncMeta{});
 };
+
+static_assert(string_view("test").length() == 4);
+
+constexpr bool hasClass(const string_view &name) {
+  using namespace tref;
+  return ([&](auto *cls, int) { return name == get<0>(cls->__meta); })(
+      (SubChild *)0, 0);
+}
+
+static_assert(hasClass("SubChild2"));
 
 template <class T>
 void dumpTree() {
