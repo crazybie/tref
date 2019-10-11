@@ -101,13 +101,27 @@ struct SubChild : Child2 {
 
 static_assert(string_view("test").length() == 4);
 
-constexpr bool hasClass(const string_view& name) {
+template <typename T>
+constexpr bool hasSubClass(const string_view& name) {
   using namespace tref;
-  return ([&](auto* cls, int) { return name == get<0>(cls->__meta); })(
-      (SubChild*)0, 0);
+  auto s = subclassOf<T>();
+  auto found = false;
+  tuple_for(s, [&](auto* c) {
+    using C = remove_pointer_t<decltype(c)>;
+    if (name == get<0>(c->__meta)) {
+      found = true;
+      return false;
+    }
+    if (hasSubClass<C>(name)) {
+      found = true;
+      return false;
+    }
+    return true;
+  });
+  return found;
 }
 
-static_assert(hasClass("SubChild"));
+static_assert(hasSubClass<Base>("SubChild"));
 
 template <class T>
 void dumpTree() {
