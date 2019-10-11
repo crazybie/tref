@@ -7,7 +7,7 @@
 using namespace std;
 
 struct Meta {
-  const char* desc;
+  const char *desc;
 
   std::string to_string() {
     std::ostringstream o;
@@ -20,7 +20,7 @@ template <typename T>
 struct NumberMeta : Meta {
   T minV, maxV;
 
-  constexpr NumberMeta(const char* desc_, T minV_, T maxV_)
+  constexpr NumberMeta(const char *desc_, T minV_, T maxV_)
       : Meta{desc_}, minV(minV_), maxV(maxV_) {}
 
   std::string to_string() {
@@ -32,7 +32,7 @@ struct NumberMeta : Meta {
 
 template <typename T, typename... Args>
 struct ValidatableFuncMeta {
-  using Validate = bool (*)(T&, Args...);
+  using Validate = bool (*)(T &, Args...);
   Validate validate = nullptr;
 
   constexpr ValidatableFuncMeta(Validate vv) : validate(vv) {}
@@ -66,7 +66,7 @@ struct Data : Base {
 
 static_assert(tref::IsReflected<Data<int>>::value);
 
-struct Child : Data<int> {
+struct Child : Data<float> {
   ReflectedType(Child);
 
   float z;
@@ -83,17 +83,17 @@ struct Child2 : Data<int> {
 struct SubChild : Child2 {
   ReflectedType(SubChild);
 
-  const char* ff = "subchild";
+  const char *ff = "subchild";
   Reflected(ff);
 
   void func(int a) { printf("func called with arg:%d\n", a); }
-  static bool func_validate(self& thiz, int a) {
+  static bool func_validate(self &thiz, int a) {
     printf("do validation with arg:%d", a);
     return a > 0;
   }
   ReflectedMeta(func, ValidatableFuncMeta{func_validate});
 
-  function<void(self&, int)> hookableFunc = [](self& thiz, int a) {
+  function<void(self &, int)> hookableFunc = [](self &thiz, int a) {
     printf("hookable func called with arg: %s, %d\n", thiz.ff, a);
   };
   ReflectedMeta(hookableFunc, HookableFuncMeta{});
@@ -102,11 +102,11 @@ struct SubChild : Child2 {
 static_assert(string_view("test").length() == 4);
 
 template <typename T>
-constexpr bool hasSubClass(const string_view& name) {
+constexpr bool hasSubClass(const string_view &name) {
   using namespace tref;
   auto s = subclassOf<T>();
   auto found = false;
-  tuple_for(s, [&](auto* c) {
+  tuple_for(s, [&](auto *c) {
     using C = remove_pointer_t<decltype(c)>;
     if (name == get<0>(c->__meta)) {
       found = true;
@@ -127,7 +127,7 @@ template <class T>
 void dumpTree() {
   using namespace tref;
   printf("===== All Subclass of %s====\n", get<0>(T::__meta));
-  eachSubClass<T>([&](auto* c, int level) {
+  eachSubClass<T>([&](auto *c, int level) {
     for (int i = 0; i < 4 * level; i++) printf(" ");
     printf("%s\n", get<0>(c->__meta));
     return true;
@@ -155,7 +155,7 @@ void TestHookable() {
   eachFields<SubChild>([&](auto name, auto v, auto meta, int level) {
     if constexpr (std::is_base_of_v<HookableFuncMeta, decltype(meta)>) {
       auto f = s.*v;
-      s.*v = [ff = move(f)](SubChild& thiz, int a) {
+      s.*v = [ff = move(f)](SubChild &thiz, int a) {
         printf("before hook:%d\n", a);
         ff(thiz, a);
       };
@@ -168,11 +168,15 @@ void TestHookable() {
 void dumpDetails() {
   using namespace tref;
 
-  puts("==== subclass details Data ====");
-  eachSubClass<Data<int>>([](auto c, int level) {
-    auto [clsName, file, line] = c->__meta;
-    printf("type:%s, file:%s(%d)\n", clsName, file, line);
+  puts("==== subclass details Base ====");
+  eachSubClass<Base>([](auto c, int level) {
     using T = remove_pointer_t<decltype(c)>;
+    auto [clsName, file, line] = c->__meta;
+    auto parent = "";
+    if constexpr (HasSuper<T>::value) {
+      parent = get<0>(T::super::__meta);
+    }
+    printf("type:%s, parent:%s, file:%s(%d)\n", clsName, parent, file, line);
 
     int cnt = 1;
     eachFields<T>([&](auto name, auto v, auto meta, int level) {
@@ -197,7 +201,7 @@ void dumpDetails() {
 
   puts("==== field values of Child ====");
   int cnt = 1;
-  auto& o = d[0];
+  auto &o = d[0];
   eachFields<Child>([&](auto name, auto v, auto meta, int level) {
     if constexpr (std::is_base_of_v<Meta, decltype(meta)>) {
       printf("field %d:%s, %s,", cnt, name, meta.to_string().c_str());
@@ -211,7 +215,7 @@ void dumpDetails() {
 }
 
 void TestRef() {
-  dumpTree<Data<int>>();
+  dumpTree<Base>();
   dumpDetails();
   TestHookable();
 }
