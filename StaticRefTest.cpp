@@ -104,7 +104,7 @@ static_assert(string_view("test").length() == 4);
 template <typename T>
 constexpr bool hasSubClass(const string_view& name) {
   using namespace tref;
-  auto s = subclassOf<T>();
+  auto s = subclassesOf<T>();
   auto found = false;
   tuple_for(s, [&](auto* c) {
     using C = remove_pointer_t<decltype(c)>;
@@ -127,8 +127,9 @@ template <class T>
 void dumpTree() {
   using namespace tref;
   printf("===== All Subclass of %s====\n", get<0>(T::__meta));
-  eachSubClass<T>([&](auto* c, int level) {
-    for (int i = 0; i < 4 * level; i++) printf(" ");
+  eachSubclass<T>([&](auto* c, int level) {
+    for (int i = 0; i < 4 * level; i++)
+      printf(" ");
     printf("%s\n", get<0>(c->__meta));
     return true;
   });
@@ -140,7 +141,7 @@ void TestHookable() {
   SubChild s;
 
   // call validatable functions
-  eachFields<SubChild>([&](auto name, auto v, auto meta, int level) {
+  eachField<SubChild>([&](auto name, auto v, auto meta, int level) {
     using ValidateFunc = ValidatableFuncMeta<SubChild, int>;
     if constexpr (std::is_base_of_v<ValidateFunc, decltype(meta)>) {
       auto arg = -1;
@@ -152,7 +153,7 @@ void TestHookable() {
   });
 
   // call hookable functions
-  eachFields<SubChild>([&](auto name, auto v, auto meta, int level) {
+  eachField<SubChild>([&](auto name, auto v, auto meta, int level) {
     if constexpr (std::is_base_of_v<HookableFuncMeta, decltype(meta)>) {
       auto f = s.*v;
       s.*v = [ff = move(f)](SubChild& thiz, int a) {
@@ -169,13 +170,13 @@ void dumpDetails() {
   using namespace tref;
 
   puts("==== subclass details Data ====");
-  eachSubClass<Data<int>>([](auto c, int level) {
+  eachSubclass<Data<int>>([](auto c, int level) {
     auto [clsName, file, line] = c->__meta;
     printf("type:%s, file:%s(%d)\n", clsName, file, line);
     using T = remove_pointer_t<decltype(c)>;
 
     int cnt = 1;
-    eachFields<T>([&](auto name, auto v, auto meta, int level) {
+    eachField<T>([&](auto name, auto v, auto meta, int level) {
       if constexpr (std::is_base_of_v<Meta, decltype(meta)>) {
         printf("field %d:%s, type:%s, %s\n", cnt, name, typeid(v).name(),
                meta.to_string().c_str());
@@ -198,7 +199,7 @@ void dumpDetails() {
   puts("==== field values of Child ====");
   int cnt = 1;
   auto& o = d[0];
-  eachFields<Child>([&](auto name, auto v, auto meta, int level) {
+  eachField<Child>([&](auto name, auto v, auto meta, int level) {
     if constexpr (std::is_base_of_v<Meta, decltype(meta)>) {
       printf("field %d:%s, %s,", cnt, name, meta.to_string().c_str());
     } else {
