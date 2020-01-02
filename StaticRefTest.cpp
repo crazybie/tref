@@ -66,7 +66,7 @@ struct Data : Base {
 
 static_assert(tref::IsReflected<Data<int>>::value);
 
-struct Child : Data<int> {
+struct Child : Data<float> {
   ReflectedType(Child);
 
   float z;
@@ -169,11 +169,15 @@ void TestHookable() {
 void dumpDetails() {
   using namespace tref;
 
-  puts("==== subclass details Data ====");
-  eachSubclass<Data<int>>([](auto c, int level) {
-    auto [clsName, file, line] = c->__meta;
-    printf("type:%s, file:%s(%d)\n", clsName, file, line);
+  puts("==== subclass details Base ====");
+  eachSubclass<Base>([](auto c, int level) {
     using T = remove_pointer_t<decltype(c)>;
+    auto [clsName, file, line] = c->__meta;
+    auto parent = "";
+    if constexpr (HasSuper<T>::value) {
+      parent = get<0>(T::super::__meta);
+    }
+    printf("type:%s, parent:%s, file:%s(%d)\n", clsName, parent, file, line);
 
     int cnt = 1;
     eachField<T>([&](auto name, auto v, auto meta, int level) {
@@ -212,7 +216,7 @@ void dumpDetails() {
 }
 
 void TestRef() {
-  dumpTree<Data<int>>();
+  dumpTree<Base>();
   dumpDetails();
   TestHookable();
 }
