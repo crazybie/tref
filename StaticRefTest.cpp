@@ -106,7 +106,7 @@ constexpr bool hasSubClass(const string_view& name) {
   using namespace tref;
   auto s = subclassesOf<T>();
   auto found = false;
-  tuple_for(s, [&](auto* c) {
+  tupleFor(s, [&](auto* c) {
     using C = remove_pointer_t<decltype(c)>;
     if (name == get<0>(c->__meta)) {
       found = true;
@@ -180,12 +180,12 @@ void dumpDetails() {
     printf("type:%s, parent:%s, file:%s(%d)\n", clsName, parent, file, line);
 
     int cnt = 1;
-    eachField<T>([&](auto name, auto v, auto meta, int level) {
+    eachField<T>([&](auto name, auto ptr, auto meta, int level) {
       if constexpr (std::is_base_of_v<Meta, decltype(meta)>) {
-        printf("field %d:%s, type:%s, %s\n", cnt, name, typeid(v).name(),
+        printf("field %d:%s, type:%s, %s\n", cnt, name, typeid(ptr).name(),
                meta.to_string().c_str());
       } else {
-        printf("field %d:%s, type:%s\n", cnt, name, typeid(v).name());
+        printf("field %d:%s, type:%s\n", cnt, name, typeid(ptr).name());
       }
       cnt++;
       return true;
