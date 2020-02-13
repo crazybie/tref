@@ -1,4 +1,4 @@
-#include "pch.h"
+#include "StaticRef.h"
 
 #include <functional>
 #include <iostream>
@@ -6,92 +6,109 @@
 
 using namespace std;
 
-struct Meta {
+struct Meta
+{
   const char* desc;
 
-  std::string to_string() {
+  std::string to_string()
+  {
     std::ostringstream o;
     o << "desc:" << desc;
     return o.str();
   }
 };
 
-template <typename T>
-struct NumberMeta : Meta {
+template<typename T>
+struct NumberMeta : Meta
+{
   T minV, maxV;
 
   constexpr NumberMeta(const char* desc_, T minV_, T maxV_)
-      : Meta{desc_}, minV(minV_), maxV(maxV_) {}
+    : Meta{ desc_ }
+    , minV(minV_)
+    , maxV(maxV_)
+  {}
 
-  std::string to_string() {
+  std::string to_string()
+  {
     std::ostringstream o;
     o << "desc:" << desc << ",range:[" << minV << "," << maxV << "]";
     return o.str();
   }
 };
 
-template <typename T, typename... Args>
-struct ValidatableFuncMeta {
+template<typename T, typename... Args>
+struct ValidatableFuncMeta
+{
   using Validate = bool (*)(T&, Args...);
   Validate validate = nullptr;
 
-  constexpr ValidatableFuncMeta(Validate vv) : validate(vv) {}
+  constexpr ValidatableFuncMeta(Validate vv)
+    : validate(vv)
+  {}
   std::string to_string() { return ""; };
 };
 
-struct HookableFuncMeta {
+struct HookableFuncMeta
+{
   constexpr HookableFuncMeta() {}
 };
 
 // using namespace tref;
 
-struct Base {
+struct Base
+{
   ReflectedTypeRoot(Base);
 };
 
-template <typename T>
-struct Data : Base {
+template<typename T>
+struct Data : Base
+{
   ReflectedType(Data);
 
   T t;
-  ReflectedMeta(t, Meta{"test"});
+  ReflectedMeta(t, Meta{ "test" });
 
   int x, y;
-  ReflectedMeta(x, NumberMeta{"pos x", 1, 100});
-  ReflectedMeta(y, NumberMeta{"pos y", 1, 100});
+  ReflectedMeta(x, NumberMeta{ "pos x", 1, 100 });
+  ReflectedMeta(y, NumberMeta{ "pos y", 1, 100 });
 
-  std::string name{"boo"};
-  ReflectedMeta(name, Meta{"entity name"});
+  std::string name{ "boo" };
+  ReflectedMeta(name, Meta{ "entity name" });
 };
 
 static_assert(tref::IsReflected<Data<int>>::value);
 
-struct Child : Data<float> {
+struct Child : Data<float>
+{
   ReflectedType(Child);
 
   float z;
   Reflected(z);
 };
 
-struct Child2 : Data<int> {
+struct Child2 : Data<int>
+{
   ReflectedType(Child2);
 
   float zz;
   Reflected(zz);
 };
 
-struct SubChild : Child2 {
+struct SubChild : Child2
+{
   ReflectedType(SubChild);
 
   const char* ff = "subchild";
   Reflected(ff);
 
   void func(int a) { printf("func called with arg:%d\n", a); }
-  static bool func_validate(self& thiz, int a) {
+  static bool func_validate(self& thiz, int a)
+  {
     printf("do validation with arg:%d", a);
     return a > 0;
   }
-  ReflectedMeta(func, ValidatableFuncMeta{func_validate});
+  ReflectedMeta(func, ValidatableFuncMeta{ func_validate });
 
   function<void(self&, int)> hookableFunc = [](self& thiz, int a) {
     printf("hookable func called with arg: %s, %d\n", thiz.ff, a);
@@ -101,8 +118,10 @@ struct SubChild : Child2 {
 
 static_assert(string_view("test").length() == 4);
 
-template <typename T>
-constexpr bool hasSubClass(const string_view& name) {
+template<typename T>
+constexpr bool
+hasSubClass(const string_view& name)
+{
   using namespace tref;
   auto s = subclassesOf<T>();
   auto found = false;
@@ -123,8 +142,10 @@ constexpr bool hasSubClass(const string_view& name) {
 
 static_assert(hasSubClass<Base>("SubChild"));
 
-template <class T>
-void dumpTree() {
+template<class T>
+void
+dumpTree()
+{
   using namespace tref;
   printf("===== All Subclass of %s====\n", get<0>(T::__meta));
   eachSubclass<T>([&](auto* c, int level) {
@@ -136,7 +157,9 @@ void dumpTree() {
   puts("============");
 }
 
-void TestHookable() {
+void
+TestHookable()
+{
   using namespace tref;
   SubChild s;
 
@@ -166,7 +189,9 @@ void TestHookable() {
   s.hookableFunc(s, 10);
 }
 
-void dumpDetails() {
+void
+dumpDetails()
+{
   using namespace tref;
 
   puts("==== subclass details Base ====");
@@ -182,7 +207,10 @@ void dumpDetails() {
     int cnt = 1;
     eachField<T>([&](auto name, auto ptr, auto meta, int level) {
       if constexpr (std::is_base_of_v<Meta, decltype(meta)>) {
-        printf("field %d:%s, type:%s, %s\n", cnt, name, typeid(ptr).name(),
+        printf("field %d:%s, type:%s, %s\n",
+               cnt,
+               name,
+               typeid(ptr).name(),
                meta.to_string().c_str());
       } else {
         printf("field %d:%s, type:%s\n", cnt, name, typeid(ptr).name());
@@ -215,7 +243,9 @@ void dumpDetails() {
   });
 }
 
-void TestRef() {
+void
+TestRef()
+{
   dumpTree<Base>();
   dumpDetails();
   TestHookable();
