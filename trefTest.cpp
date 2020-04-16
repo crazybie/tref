@@ -175,6 +175,7 @@ void dumpDetails() {
     if constexpr (HasSuper<T>::value) {
       parent = get<0>(T::super::__meta);
     }
+    printf("=====\n");
     printf("type:%s, parent:%s, file:%s(%d)\n", clsName, parent, file, line);
 
     int cnt = 1;
