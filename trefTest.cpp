@@ -104,7 +104,7 @@ template <typename T>
 constexpr bool hasSubClass(const string_view& name) {
   using namespace tref;
   auto found = false;
-  each<T, SubclassTag>([&](auto* c) {
+  imp::each<T, imp::SubclassTag>([&](auto* c) {
     using C = remove_pointer_t<decltype(c)>;
     if (name == get<0>(c->__meta)) {
       found = true;
