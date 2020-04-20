@@ -46,56 +46,56 @@ struct HookableFuncMeta {
 // using namespace tref;
 
 struct Base {
-  ReflectedTypeRoot(Base);
+  RefTypeRoot(Base);
 };
 
 struct Data : Base {
-  ReflectedType(Data);
+  RefType(Data);
 
   int t;
-  ReflectedMeta(t, Meta{"test"});
+  RefMemberWithMeta(t, Meta{"test"});
 
   int x, y;
-  ReflectedMeta(x, NumberMeta{"pos x", 1, 100});
-  ReflectedMeta(y, NumberMeta{"pos y", 1, 100});
+  RefMemberWithMeta(x, NumberMeta{"pos x", 1, 100});
+  RefMemberWithMeta(y, NumberMeta{"pos y", 1, 100});
 
   std::string name{"boo"};
-  ReflectedMeta(name, Meta{"entity name"});
+  RefMemberWithMeta(name, Meta{"entity name"});
 };
 
 static_assert(tref::IsReflected<Data>::value);
 
 struct Child : Data {
-  ReflectedType(Child);
+  RefType(Child);
 
   float z;
-  Reflected(z);
+  RefMember(z);
 };
 
 struct Child2 : Data {
-  ReflectedType(Child2);
+  RefType(Child2);
 
   float zz;
-  Reflected(zz);
+  RefMember(zz);
 };
 
 struct SubChild : Child2 {
-  ReflectedType(SubChild);
+  RefType(SubChild);
 
   const char* ff = "subchild";
-  Reflected(ff);
+  RefMember(ff);
 
   void func(int a) { printf("func called with arg:%d\n", a); }
   static bool func_validate(self& thiz, int a) {
     printf("do validation with arg:%d", a);
     return a > 0;
   }
-  ReflectedMeta(func, ValidatableFuncMeta{func_validate});
+  RefMemberWithMeta(func, ValidatableFuncMeta{func_validate});
 
   function<void(self&, int)> hookableFunc = [](self& thiz, int a) {
     printf("hookable func called with arg: %s, %d\n", thiz.ff, a);
   };
-  ReflectedMeta(hookableFunc, HookableFuncMeta{});
+  RefMemberWithMeta(hookableFunc, HookableFuncMeta{});
 };
 
 static_assert(string_view("test").length() == 4);
@@ -139,7 +139,7 @@ void TestHookable() {
   SubChild s;
 
   // call validatable functions
-  eachField<SubChild>([&](auto name, auto v, auto meta, int level) {
+  eachMember<SubChild>([&](auto name, auto v, auto meta, int level) {
     using ValidateFunc = ValidatableFuncMeta<SubChild, int>;
     if constexpr (std::is_base_of_v<ValidateFunc, decltype(meta)>) {
       auto arg = -1;
@@ -151,7 +151,7 @@ void TestHookable() {
   });
 
   // call hookable functions
-  eachField<SubChild>([&](auto name, auto v, auto meta, int level) {
+  eachMember<SubChild>([&](auto name, auto v, auto meta, int level) {
     if constexpr (std::is_base_of_v<HookableFuncMeta, decltype(meta)>) {
       auto f = s.*v;
       s.*v = [ff = move(f)](SubChild& thiz, int a) {
@@ -175,11 +175,12 @@ void dumpDetails() {
     if constexpr (HasSuper<T>::value) {
       parent = get<0>(T::super::__meta);
     }
+
     printf("=====\n");
     printf("type:%s, parent:%s, file:%s(%d)\n", clsName, parent, file, line);
 
     int cnt = 1;
-    eachField<T>([&](auto name, auto ptr, auto meta, int level) {
+    eachMember<T>([&](auto name, auto ptr, auto meta, int level) {
       if constexpr (std::is_base_of_v<Meta, decltype(meta)>) {
         printf("field %d:%s, type:%s, %s\n", cnt, name, typeid(ptr).name(),
                meta.to_string().c_str());
@@ -202,7 +203,7 @@ void dumpDetails() {
   puts("==== field values of Child ====");
   int cnt = 1;
   auto& o = d[0];
-  eachField<Child>([&](auto name, auto v, auto meta, int level) {
+  eachMember<Child>([&](auto name, auto v, auto meta, int level) {
     if constexpr (std::is_base_of_v<Meta, decltype(meta)>) {
       printf("field %d:%s, %s,", cnt, name, meta.to_string().c_str());
     } else {
