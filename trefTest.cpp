@@ -1,8 +1,8 @@
-#include "tref.h"
-
 #include <functional>
 #include <iostream>
 #include <sstream>
+
+#include "tref.h"
 
 using namespace std;
 
@@ -98,7 +98,6 @@ struct SubChild : Child2 {
   RefMemberWithMeta(hookableFunc, HookableFuncMeta{});
 };
 
-// TODO: complete the support of inheritance
 struct ExternalData : SubChild {
   int age;
   int age2;
@@ -112,6 +111,8 @@ struct BindExternalData {
   RefMember(age2);
   RefMember(money);
 };
+static_assert(tref::has_super_v<ExternalData>);
+static_assert(is_same_v<tref::super_class_t<ExternalData>, SubChild>);
 
 template <typename T>
 constexpr bool hasSubClass(const string_view& name) {
@@ -119,7 +120,7 @@ constexpr bool hasSubClass(const string_view& name) {
   auto found = false;
   imp::each<T, imp::SubclassTag>([&](auto info) {
     using C = remove_pointer_t<tuple_element_t<1, decltype(info)>>;
-    if (name == get<0>(__meta(&get<1>(info)))) {
+    if (name == get<0>(class_meta_v<C>)) {
       found = true;
       return false;
     }
@@ -138,7 +139,7 @@ static_assert(hasSubClass<Base>("ExternalData"));
 template <class T>
 void dumpTree() {
   using namespace tref;
-  printf("===== All Subclass of %s====\n", get<0>(__meta((T**)0)));
+  printf("===== All Subclass of %s====\n", get<0>(class_meta_v<T>));
   eachSubclass<T>([&](auto* c, auto info, int level) {
     for (int i = 0; i < 4 * level; i++)
       printf(" ");
@@ -184,14 +185,14 @@ void dumpDetails() {
   puts("==== subclass details Base ====");
   eachSubclass<Child2>([](auto c, auto info, int level) {
     using T = remove_pointer_t<decltype(c)>;
-    auto [clsName, file, line] = info;
+    auto [clsName, sz] = info;
     auto parent = "";
     if constexpr (has_super_v<T>) {
-      parent = get<0>(__meta((T::super**)0));
+      parent = get<0>(class_meta_v<super_class_t<T>>);
     }
 
     printf("=====\n");
-    printf("type:%s, parent:%s, file:%s(%d)\n", clsName, parent, file, line);
+    printf("type:%s, parent:%s, sz: %d\n", clsName, parent, sz);
 
     int cnt = 1;
     eachMember<T>([&](auto name, auto ptr, auto meta, int level) {
