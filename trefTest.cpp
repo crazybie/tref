@@ -98,6 +98,7 @@ struct SubChild : Child2 {
   RefMemberWithMeta(hookableFunc, HookableFuncMeta{});
 };
 
+// TODO: complete the support of inheritance
 struct ExternalData : SubChild {
   int age;
   int age2;
