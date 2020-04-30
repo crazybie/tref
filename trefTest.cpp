@@ -48,11 +48,13 @@ struct HookableFuncMeta {
 struct Base {
   RefTypeRoot(Base);
 };
+static_assert(tref::is_reflected_v<Base>);
 
+template <typename T>
 struct Data : Base {
   RefType(Data);
 
-  int t;
+  T t;
   RefMemberWithMeta(t, Meta{"test"});
 
   int x, y;
@@ -63,16 +65,14 @@ struct Data : Base {
   RefMemberWithMeta(name, Meta{"entity name"});
 };
 
-static_assert(tref::IsReflected<Data>::value);
-
-struct Child : Data {
+struct Child : Data<int> {
   RefType(Child);
 
   float z;
   RefMember(z);
 };
 
-struct Child2 : Data {
+struct Child2 : Data<float> {
   RefType(Child2);
 
   float zz;
@@ -98,15 +98,27 @@ struct SubChild : Child2 {
   RefMemberWithMeta(hookableFunc, HookableFuncMeta{});
 };
 
-static_assert(string_view("test").length() == 4);
+struct ExternalData : SubChild {
+  int age;
+  int age2;
+  float money;
+};
+
+struct BindExternalData {
+  _RefTypeCommon(ExternalData);
+  _RefSuper(SubChild);
+  RefMember(age);
+  RefMember(age2);
+  RefMember(money);
+};
 
 template <typename T>
 constexpr bool hasSubClass(const string_view& name) {
   using namespace tref;
   auto found = false;
-  imp::each<T, imp::SubclassTag>([&](auto* c) {
-    using C = remove_pointer_t<decltype(c)>;
-    if (name == get<0>(c->__meta)) {
+  imp::each<T, imp::SubclassTag>([&](auto info) {
+    using C = remove_pointer_t<tuple_element_t<1, decltype(info)>>;
+    if (name == get<0>(__meta(&get<1>(info)))) {
       found = true;
       return false;
     }
@@ -120,15 +132,16 @@ constexpr bool hasSubClass(const string_view& name) {
 }
 
 static_assert(hasSubClass<Base>("SubChild"));
+static_assert(hasSubClass<Base>("ExternalData"));
 
 template <class T>
 void dumpTree() {
   using namespace tref;
-  printf("===== All Subclass of %s====\n", get<0>(T::__meta));
-  eachSubclass<T>([&](auto* c, int level) {
+  printf("===== All Subclass of %s====\n", get<0>(__meta((T**)0)));
+  eachSubclass<T>([&](auto* c, auto info, int level) {
     for (int i = 0; i < 4 * level; i++)
       printf(" ");
-    printf("%s\n", get<0>(c->__meta));
+    printf("%s\n", get<0>(info));
     return true;
   });
   puts("============");
@@ -168,12 +181,12 @@ void dumpDetails() {
   using namespace tref;
 
   puts("==== subclass details Base ====");
-  eachSubclass<Base>([](auto c, int level) {
+  eachSubclass<Child2>([](auto c, auto info, int level) {
     using T = remove_pointer_t<decltype(c)>;
-    auto [clsName, file, line] = c->__meta;
+    auto [clsName, file, line] = info;
     auto parent = "";
-    if constexpr (HasSuper<T>::value) {
-      parent = get<0>(T::super::__meta);
+    if constexpr (has_super_v<T>) {
+      parent = get<0>(__meta((T::super**)0));
     }
 
     printf("=====\n");
