@@ -207,7 +207,100 @@ void dumpDetails() {
   });
 }
 
+//////////////////////////////////////////////////////////////////////////
+/// enum reflection
+
+namespace tref_enum {
+namespace imp {
+
+#define MAP(macro, ...) \
+  IDENTITY(APPLY(CHOOSE_MAP_START, COUNT(__VA_ARGS__))(macro, __VA_ARGS__))
+
+#define CHOOSE_MAP_START(count) MAP##count
+
+#define APPLY(macro, ...) IDENTITY(macro(__VA_ARGS__))
+
+// Needed to expand __VA_ARGS__ "eagerly" on the MSVC preprocessor.
+#define IDENTITY(x) x
+
+#define MAP1(m, x) m(x)
+#define MAP2(m, x, ...) m(x) IDENTITY(MAP1(m, __VA_ARGS__))
+#define MAP3(m, x, ...) m(x) IDENTITY(MAP2(m, __VA_ARGS__))
+#define MAP4(m, x, ...) m(x) IDENTITY(MAP3(m, __VA_ARGS__))
+#define MAP5(m, x, ...) m(x) IDENTITY(MAP4(m, __VA_ARGS__))
+#define MAP6(m, x, ...) m(x) IDENTITY(MAP5(m, __VA_ARGS__))
+#define MAP7(m, x, ...) m(x) IDENTITY(MAP6(m, __VA_ARGS__))
+#define MAP8(m, x, ...) m(x) IDENTITY(MAP7(m, __VA_ARGS__))
+
+#define EVALUATE_COUNT(_1, _2, _3, _4, _5, _6, _7, _8, count, ...) count
+
+#define COUNT(...) IDENTITY(EVALUATE_COUNT(__VA_ARGS__, 8, 7, 6, 5, 4, 3, 2, 1))
+
+#define STRINGIZE_SINGLE(E)                    \
+  std::tuple{(tref_enum::imp::ignore_assign)E, \
+             tref_enum::imp::_tref_trim_value(#E)},
+
+#define STRINGIZE(...) IDENTITY(MAP(STRINGIZE_SINGLE, __VA_ARGS__))
+
+struct ignore_assign {
+  constexpr ignore_assign(int value) : _value(value) {}
+  constexpr operator int() const { return _value; }
+  constexpr ignore_assign operator=(int) { return *this; }
+  int _value;
+};
+
+#define _Enum(T, ...)                                    \
+  enum T { __VA_ARGS__ };                                \
+  constexpr auto _tref_enum_items(T) {                   \
+    return std::tuple{IDENTITY(STRINGIZE(__VA_ARGS__))}; \
+  }
+
+constexpr auto tuple_for = [](auto&& t, auto&& f) {
+  return apply([&f](auto&... x) { (..., f(x)); }, t);
+};
+
+constexpr string_view _tref_trim_value(string_view s) {
+  auto p = s.find_first_of(' ');
+  if (p == string_view::npos)
+    p = s.find_first_of('=');
+  return s.substr(0, p);
+}
+
+template <typename T>
+constexpr auto enum_string(T v) {
+  constexpr auto items = _tref_enum_items((T)0);
+  string_view ret = "";
+  tuple_for(items, [&](auto e) {
+    if ((int)get<0>(e) == v) {
+      ret = get<1>(e);
+    }
+  });
+  return ret;
+}
+
+template <typename T>
+constexpr auto enum_value(string_view s, T defVal) {
+  constexpr auto items = _tref_enum_items((T)0);
+  auto ret = defVal;
+  tuple_for(items, [&](auto n) {
+    if (s == get<1>(n)) {
+      ret = (T)(int)get<0>(n);
+    }
+  });
+  return ret;
+}
+}  // namespace imp
+using imp::enum_string;
+using imp::enum_value;
+
+}  // namespace tref_enum
+
+_Enum(EnumA, Ass = 1, Ban = 4);
+static_assert(tref_enum::enum_string(Ass) == "Ass");
+static_assert(tref_enum::enum_value("Ban", Ass) == Ban);
+
 void TestRef() {
+  auto f = tref_enum::enum_string(Ass);
   dumpTree<Base>();
   dumpDetails();
   TestHookable();
