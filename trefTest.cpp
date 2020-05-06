@@ -1,10 +1,11 @@
+#include "tref.h"
+
 #include <functional>
 #include <iostream>
 #include <sstream>
 
-#include "tref.h"
-
 using namespace std;
+using namespace tref;
 
 struct Meta {
   const char* desc;
@@ -43,59 +44,57 @@ struct HookableFuncMeta {
   constexpr HookableFuncMeta() {}
 };
 
-// using namespace tref;
-
 struct Base {
-  RefTypeRoot(Base);
+  TrefTypeRoot(Base);
 };
 static_assert(tref::is_reflected_v<Base>);
 
 template <typename T>
 struct Data : Base {
-  RefType(Data);
+  TrefType(Data);
 
   T t;
-  RefMemberWithMeta(t, Meta{"test"});
+  TrefMemberWithMeta(t, Meta{"test"});
 
   int x, y;
-  RefMemberWithMeta(x, NumberMeta{"pos x", 1, 100});
-  RefMemberWithMeta(y, NumberMeta{"pos y", 1, 100});
+  TrefMemberWithMeta(x, NumberMeta{"pos x", 1, 100});
+  TrefMemberWithMeta(y, NumberMeta{"pos y", 1, 100});
 
   std::string name{"boo"};
-  RefMemberWithMeta(name, Meta{"entity name"});
+  TrefMemberWithMeta(name, Meta{"entity name"});
 };
 
 struct Child : Data<int> {
-  RefType(Child);
+  TrefType(Child);
 
   float z;
-  RefMember(z);
+  TrefMember(z);
 };
 
 struct Child2 : Data<float> {
-  RefType(Child2);
+  TrefType(Child2);
 
   float zz;
-  RefMember(zz);
+  TrefMember(zz);
 };
 
 struct SubChild : Child2 {
-  RefType(SubChild);
+  TrefType(SubChild);
 
   const char* ff = "subchild";
-  RefMember(ff);
+  TrefMember(ff);
 
   void func(int a) { printf("func called with arg:%d\n", a); }
-  static bool func_validate(self& thiz, int a) {
+  static bool func_validate(self_t& self, int a) {
     printf("do validation with arg:%d", a);
     return a > 0;
   }
-  RefMemberWithMeta(func, ValidatableFuncMeta{func_validate});
+  TrefMemberWithMeta(func, ValidatableFuncMeta{func_validate});
 
-  function<void(self&, int)> hookableFunc = [](self& thiz, int a) {
-    printf("hookable func called with arg: %s, %d\n", thiz.ff, a);
+  function<void(self_t&, int)> hookableFunc = [](self_t& self, int a) {
+    printf("hookable func called with arg: %s, %d\n", self.ff, a);
   };
-  RefMemberWithMeta(hookableFunc, HookableFuncMeta{});
+  TrefMemberWithMeta(hookableFunc, HookableFuncMeta{});
 };
 
 struct ExternalData : SubChild {
@@ -105,18 +104,17 @@ struct ExternalData : SubChild {
 };
 
 struct BindExternalData {
-  _RefTypeCommon(ExternalData);
-  _RefSuper(SubChild);
-  RefMember(age);
-  RefMember(age2);
-  RefMember(money);
+  TrefTypeExternal(ExternalData, SubChild);
+  TrefMember(age);
+  TrefMember(age2);
+  TrefMember(money);
 };
-static_assert(tref::has_super_v<ExternalData>);
-static_assert(is_same_v<tref::super_class_t<ExternalData>, SubChild>);
+static_assert(tref::has_base_v<ExternalData>);
+static_assert(is_same_v<tref::base_class_t<ExternalData>, SubChild>);
+static_assert(tref::is_reflected_v<ExternalData>);
 
 template <typename T>
 constexpr bool hasSubClass(const string_view& name) {
-  using namespace tref;
   auto found = false;
   imp::each<T, imp::SubclassTag>([&](auto info) {
     using C = remove_pointer_t<tuple_element_t<1, decltype(info)>>;
@@ -138,9 +136,9 @@ static_assert(hasSubClass<Base>("ExternalData"));
 
 template <class T>
 void dumpTree() {
-  using namespace tref;
   printf("===== All Subclass of %s====\n", get<0>(class_meta_v<T>));
-  eachSubclass<T>([&](auto* c, auto info, int level) {
+
+  each_subclass<T>([&](auto* c, auto info, int level) {
     for (int i = 0; i < 4 * level; i++)
       printf(" ");
     printf("%s\n", get<0>(info));
@@ -150,11 +148,10 @@ void dumpTree() {
 }
 
 void TestHookable() {
-  using namespace tref;
   SubChild s;
 
   // call validatable functions
-  eachMember<SubChild>([&](auto name, auto v, auto meta, int level) {
+  each_member<SubChild>([&](auto name, auto v, auto meta, int level) {
     using ValidateFunc = ValidatableFuncMeta<SubChild, int>;
     if constexpr (std::is_base_of_v<ValidateFunc, decltype(meta)>) {
       auto arg = -1;
@@ -166,12 +163,12 @@ void TestHookable() {
   });
 
   // call hookable functions
-  eachMember<SubChild>([&](auto name, auto v, auto meta, int level) {
+  each_member<SubChild>([&](auto name, auto v, auto meta, int level) {
     if constexpr (std::is_base_of_v<HookableFuncMeta, decltype(meta)>) {
       auto f = s.*v;
-      s.*v = [ff = move(f)](SubChild& thiz, int a) {
+      s.*v = [ff = move(f)](SubChild& self, int a) {
         printf("before hook:%d\n", a);
-        ff(thiz, a);
+        ff(self, a);
       };
     }
     return true;
@@ -180,22 +177,22 @@ void TestHookable() {
 }
 
 void dumpDetails() {
-  using namespace tref;
+  using T = Child2;
+  printf("==== subclass details of %s ====\n", get<0>(class_meta_v<T>));
 
-  puts("==== subclass details Base ====");
-  eachSubclass<Child2>([](auto c, auto info, int level) {
+  each_subclass<T>([](auto c, auto info, int level) {
     using T = remove_pointer_t<decltype(c)>;
     auto [clsName, sz] = info;
     auto parent = "";
-    if constexpr (has_super_v<T>) {
-      parent = get<0>(class_meta_v<super_class_t<T>>);
+    if constexpr (has_base_v<T>) {
+      parent = get<0>(class_meta_v<base_class_t<T>>);
     }
 
     printf("=====\n");
     printf("type:%s, parent:%s, sz: %d\n", clsName, parent, sz);
 
     int cnt = 1;
-    eachMember<T>([&](auto name, auto ptr, auto meta, int level) {
+    each_member<T>([&](auto name, auto ptr, auto meta, int level) {
       if constexpr (std::is_base_of_v<Meta, decltype(meta)>) {
         printf("field %d:%s, type:%s, %s\n", cnt, name, typeid(ptr).name(),
                meta.to_string().c_str());
@@ -206,26 +203,6 @@ void dumpDetails() {
       return true;
     });
 
-    return true;
-  });
-
-  Child d[2];
-  JsonReader r(R"(
-[{  x 1 y 2 z 3 } { x 11 y 22 z 33}]
-)");
-  r >> d;
-
-  puts("==== field values of Child ====");
-  int cnt = 1;
-  auto& o = d[0];
-  eachMember<Child>([&](auto name, auto v, auto meta, int level) {
-    if constexpr (std::is_base_of_v<Meta, decltype(meta)>) {
-      printf("field %d:%s, %s,", cnt, name, meta.to_string().c_str());
-    } else {
-      printf("field %d:%s,", cnt, name);
-    }
-    cout << "value:" << o.*v << endl;
-    cnt++;
     return true;
   });
 }
