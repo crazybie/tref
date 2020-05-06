@@ -213,6 +213,9 @@ void dumpDetails() {
 namespace tref_enum {
 namespace imp {
 
+/// ref:
+/// https://www.codeproject.com/Articles/1002895/Clean-Reflective-Enums-Cplusplus-Enum-to-String-wi
+
 #define MAP(macro, ...) \
   IDENTITY(APPLY(CHOOSE_MAP_START, COUNT(__VA_ARGS__))(macro, __VA_ARGS__))
 
