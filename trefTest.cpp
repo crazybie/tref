@@ -47,7 +47,9 @@ struct HookableFuncMeta {
 struct Base {
   TrefTypeRoot(Base);
 };
+
 static_assert(tref::is_reflected_v<Base>);
+constexpr auto info = class_meta_v<Base>;
 
 template <typename T>
 struct Data : Base {
@@ -182,7 +184,7 @@ void dumpDetails() {
 
   each_subclass<T>([](auto c, auto info, int level) {
     using T = remove_pointer_t<decltype(c)>;
-    auto [clsName, sz] = info;
+    auto [clsName, sz, basePtr] = info;
     auto parent = "";
     if constexpr (has_base_v<T>) {
       parent = get<0>(class_meta_v<base_class_t<T>>);
