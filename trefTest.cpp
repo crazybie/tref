@@ -7,6 +7,18 @@
 using namespace std;
 using namespace tref;
 
+namespace NS {
+struct TestBase {};
+
+struct TypeA {
+  _TrefPush(NS::TestBase, imp::SubclassTag, (TypeA*)0);
+};
+
+struct TypeB {
+  _TrefPush(NS::TestBase, imp::SubclassTag, (TypeB*)0);
+};
+}  // namespace NS
+
 struct Meta {
   const char* desc;
 
@@ -97,6 +109,25 @@ struct SubChild : Child2 {
     printf("hookable func called with arg: %s, %d\n", self.ff, a);
   };
   TrefMemberWithMeta(hookableFunc, HookableFuncMeta{});
+};
+
+template <typename T>
+struct TempSubChild : SubChild {
+  TrefType(TempSubChild<T>);
+  T newVal;
+  TrefMember(newVal);
+};
+
+struct SubChildOfTempSubChild1 : TempSubChild<int> {
+  TrefType(SubChildOfTempSubChild1);
+};
+
+struct SubChildOfTempSubChild2 : TempSubChild<float> {
+  TrefType(SubChildOfTempSubChild2);
+};
+
+struct SubChildOfTempSubChild3 : TempSubChild<double> {
+  TrefType(SubChildOfTempSubChild3);
 };
 
 struct ExternalData : SubChild {
