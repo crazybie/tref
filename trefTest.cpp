@@ -7,17 +7,179 @@
 using namespace std;
 using namespace tref;
 
-namespace NS {
-struct TestBase {};
+//////////////////////////////////////////////////////////////////////////
+// basic usage
 
 struct TypeA {
-  _TrefPush(NS::TestBase, imp::SubclassTag, (TypeA*)0);
+  TrefType(TypeA);
+  int val;
+  TrefMember(val);
 };
 
-struct TypeB {
-  _TrefPush(NS::TestBase, imp::SubclassTag, (TypeB*)0);
+static_assert(is_reflected_v<TypeA>);
+static_assert(class_info_v<TypeA>.name == "TypeA");
+static_assert(class_info_v<TypeA>.size == sizeof(TypeA));
+static_assert(class_info_v<TypeA>.each_member([](auto info) {
+  using mem_t = decltype(info.addr);
+  return info.name == "val" && is_same_v<object_t<mem_t>, TypeA> &&
+         is_same_v<remove_object_t<mem_t>, decltype(TypeA{}.val)>;
+}));
+static_assert(class_info_v<TypeA>.each_member_r([](auto info, int lv) {
+  return lv == 0 && info.name == "val";
+}));
+
+struct TypeB : TypeA {
+  TrefType(TypeB);
+  float foo;
+  TrefMember(foo);
 };
-}  // namespace NS
+
+static_assert(is_same_v<base_class_t<TypeB>, TypeA>);
+static_assert(is_same_v<decltype(class_info_v<TypeB>.base), TypeA*>);
+static_assert(class_info_v<TypeB>.each_member([](auto info) {
+  using mem_t = decltype(info.addr);
+  return info.name == "foo" && is_same_v<object_t<mem_t>, TypeB> &&
+         is_same_v<remove_object_t<mem_t>, decltype(TypeB{}.foo)>;
+}));
+static_assert(class_info_v<TypeB>.each_member_r([](auto info, int lv) {
+  return (lv == 0 || lv == 1) && (info.name == "foo" || info.name == "val");
+}));
+
+template <typename T>
+struct TempType : TypeB {
+  TrefType(TempType);
+  T tempVal;
+  TrefMember(tempVal);
+};
+
+static_assert(class_info_v<TempType<int>>.name == "TempType");
+static_assert(class_info_v<TempType<int>>.each_member([](auto info) {
+  return info.name == "tempVal";
+}));
+
+struct SubTypeA : TempType<int> {
+  TrefType(SubTypeA);
+};
+static_assert(class_info_v<SubTypeA>.base == (TempType<int>*)0);
+static_assert(is_same_v<decltype(class_info_v<SubTypeA>.base), TempType<int>*>);
+static_assert(
+    !is_same_v<decltype(class_info_v<SubTypeA>.base), TempType<float>*>);
+
+struct SubTypeB : TempType<float> {
+  TrefType(SubTypeB);
+};
+
+static_assert(class_info_v<SubTypeB>.base == (TempType<float>*)0);
+static_assert(
+    !is_same_v<decltype(class_info_v<SubTypeB>.base), TempType<int>*>);
+static_assert(
+    is_same_v<decltype(class_info_v<SubTypeB>.base), TempType<float>*>);
+
+//////////////////////////////////////////////////////////////////////////
+// enum test
+
+TrefEnumGlobal(EnumA, Ass = 1, Ban = (int)EnumA::Ass * 3);
+static_assert(enum_to_string(EnumA::Ass) == "Ass");
+static_assert(string_to_enum("Ban", EnumA::Ass) == EnumA::Ban);
+
+enum class ExternalEnum { Value1 = 1, Value2 = Value1 + 4 };
+TrefEnumImp(ExternalEnum, Value1, Value2);
+static_assert(enum_info_v<ExternalEnum>.name == "ExternalEnum");
+static_assert(enum_info_v<ExternalEnum>.size == sizeof(ExternalEnum));
+static_assert(enum_info_v<ExternalEnum>.items.size() == 2);
+
+template <typename T>
+void DumpEnum() {
+  printf("========= Enum Members of %s ======\n", enum_info_v<T>.name.data());
+  enum_info_v<T>.each_item([](auto name, auto val) {
+    printf("name: %.*s, val: %d\n", name.size(), name.data(), (int)val);
+  });
+  puts("==================");
+}
+
+void TestEnum() {
+  DumpEnum<EnumA>();
+  DumpEnum<ExternalEnum>();
+}
+
+struct DataWithEnumMemType {
+  TrefType(DataWithEnumMemType);
+  TrefEnum(EnumF, ValA = 1, ValB = 12);
+  TrefMemberType(EnumF);
+};
+static_assert(class_info_v<DataWithEnumMemType>.each_member_type([](auto info) {
+  using T = remove_pointer_t<decltype(info.addr)>;
+  static_assert(is_enum_v<T> && is_same_v<T, DataWithEnumMemType::EnumF>);
+  return info.name == "EnumF";
+}));
+
+//////////////////////////////////////////////////////////////////////////
+
+template <typename T>
+constexpr bool hasSubClass(const string_view& name) {
+  auto found = false;
+  imp::each<T, imp::SubclassTag>([&](auto info) {
+    using C = remove_pointer_t<tuple_element_t<1, decltype(info)>>;
+    if (name == class_info_v<C>.name) {
+      found = true;
+      return false;
+    }
+    if (hasSubClass<C>(name)) {
+      found = true;
+      return false;
+    }
+    return true;
+  });
+  return found;
+}
+
+template <class T>
+void dumpTree() {
+  printf("===== All Subclass of %s====\n", class_info_v<T>.name.data());
+
+  class_info_v<T>.each_subclass_r([&](auto info, int level) {
+    for (int i = 0; i < 4 * level; i++)
+      printf(" ");
+    printf("%s\n", info.name.data());
+    return true;
+  });
+  puts("============");
+}
+
+template <typename T>
+void dumpDetails() {
+  printf("==== subclass details of %s ====\n", class_info_v<T>.name.data());
+
+  class_info_v<T>.each_subclass_r([](auto info, int) {
+    using S = decltype(info)::class_t;
+    string_view parent = "<none>";
+    if constexpr (has_base_v<S>) {
+      parent = class_info_v<base_class_t<S>>.name;
+    }
+
+    printf("=====\n");
+    printf("type:%s, parent:%s, sz: %d\n", info.name.data(), parent.data(),
+           info.size);
+
+    int cnt = 0;
+    class_info_v<S>.each_member_r([&](auto info, int) {
+      if constexpr (std::is_base_of_v<Meta, decltype(info.meta)>) {
+        printf("field %d:%s, type:%s, %s\n", cnt, info.name.data(),
+               typeid(info.addr).name(), info.meta.to_string().c_str());
+      } else {
+        printf("field %d:%s, type:%s\n", cnt, info.name.data(),
+               typeid(info.addr).name());
+      }
+      cnt++;
+      return true;
+    });
+
+    return true;
+  });
+}
+
+//////////////////////////////////////////////////////////////////////////
+// reflection of hierarchy with custom meta
 
 struct Meta {
   const char* desc;
@@ -43,29 +205,13 @@ struct NumberMeta : Meta {
   }
 };
 
-template <typename T, typename... Args>
-struct ValidatableFuncMeta {
-  using Validate = bool (*)(T&, Args...);
-  Validate validate = nullptr;
-
-  constexpr ValidatableFuncMeta(Validate vv) : validate(vv) {}
-  std::string to_string() { return ""; };
-};
-
-struct HookableFuncMeta {
-  constexpr HookableFuncMeta() {}
-};
-
 struct Base {
-  TrefTypeRoot(Base);
+  TrefRootType(Base);
 };
-
-static_assert(tref::is_reflected_v<Base>);
-constexpr auto info = class_meta_v<Base>;
 
 template <typename T>
 struct Data : Base {
-  TrefType(Data);
+  TrefSubType(Data);
 
   T t;
   TrefMemberWithMeta(t, Meta{"test"});
@@ -79,21 +225,34 @@ struct Data : Base {
 };
 
 struct Child : Data<int> {
-  TrefType(Child);
+  TrefSubType(Child);
 
   float z;
   TrefMember(z);
 };
 
 struct Child2 : Data<float> {
-  TrefType(Child2);
+  TrefSubType(Child2);
 
   float zz;
   TrefMember(zz);
 };
 
+template <typename T, typename... Args>
+struct ValidatableFuncMeta {
+  using Validate = bool (*)(T&, Args...);
+  Validate validate = nullptr;
+
+  constexpr ValidatableFuncMeta(Validate vv) : validate(vv) {}
+  std::string to_string() { return ""; };
+};
+
+struct HookableFuncMeta {
+  constexpr HookableFuncMeta() {}
+};
+
 struct SubChild : Child2 {
-  TrefType(SubChild);
+  TrefSubType(SubChild);
 
   const char* ff = "subchild";
   TrefMember(ff);
@@ -111,84 +270,18 @@ struct SubChild : Child2 {
   TrefMemberWithMeta(hookableFunc, HookableFuncMeta{});
 };
 
-template <typename T>
-struct TempSubChild : SubChild {
-  TrefType(TempSubChild<T>);
-  T newVal;
-  TrefMember(newVal);
-};
-
-struct SubChildOfTempSubChild1 : TempSubChild<int> {
-  TrefType(SubChildOfTempSubChild1);
-};
-
-struct SubChildOfTempSubChild2 : TempSubChild<float> {
-  TrefType(SubChildOfTempSubChild2);
-};
-
-struct SubChildOfTempSubChild3 : TempSubChild<double> {
-  TrefType(SubChildOfTempSubChild3);
-};
-
-struct ExternalData : SubChild {
-  int age;
-  int age2;
-  float money;
-};
-
-struct BindExternalData {
-  TrefTypeExternal(ExternalData, SubChild);
-  TrefMember(age);
-  TrefMember(age2);
-  TrefMember(money);
-};
-static_assert(tref::has_base_v<ExternalData>);
-static_assert(is_same_v<tref::base_class_t<ExternalData>, SubChild>);
-static_assert(tref::is_reflected_v<ExternalData>);
-
-template <typename T>
-constexpr bool hasSubClass(const string_view& name) {
-  auto found = false;
-  imp::each<T, imp::SubclassTag>([&](auto info) {
-    using C = remove_pointer_t<tuple_element_t<1, decltype(info)>>;
-    if (name == get<0>(class_meta_v<C>)) {
-      found = true;
-      return false;
-    }
-    if (hasSubClass<C>(name)) {
-      found = true;
-      return false;
-    }
-    return true;
-  });
-  return found;
-}
-
 static_assert(hasSubClass<Base>("SubChild"));
-static_assert(hasSubClass<Base>("ExternalData"));
-
-template <class T>
-void dumpTree() {
-  printf("===== All Subclass of %s====\n", get<0>(class_meta_v<T>));
-
-  each_subclass<T>([&](auto* c, auto info, int level) {
-    for (int i = 0; i < 4 * level; i++)
-      printf(" ");
-    printf("%s\n", get<0>(info));
-    return true;
-  });
-  puts("============");
-}
 
 void TestHookable() {
   SubChild s;
 
   // call validatable functions
-  each_member<SubChild>([&](auto name, auto v, auto meta, int level) {
+  class_info_v<SubChild>.each_member_r([&](auto info, int) {
     using ValidateFunc = ValidatableFuncMeta<SubChild, int>;
-    if constexpr (std::is_base_of_v<ValidateFunc, decltype(meta)>) {
+    if constexpr (std::is_base_of_v<ValidateFunc, decltype(info.meta)>) {
+      auto v = info.addr;
       auto arg = -1;
-      if (meta.validate(s, arg)) {
+      if (info.meta.validate(s, arg)) {
         (s.*v)(arg);
       }
     }
@@ -196,8 +289,9 @@ void TestHookable() {
   });
 
   // call hookable functions
-  each_member<SubChild>([&](auto name, auto v, auto meta, int level) {
-    if constexpr (std::is_base_of_v<HookableFuncMeta, decltype(meta)>) {
+  class_info_v<SubChild>.each_member_r([&](auto info, int) {
+    if constexpr (std::is_base_of_v<HookableFuncMeta, decltype(info.meta)>) {
+      auto v = info.addr;
       auto f = s.*v;
       s.*v = [ff = move(f)](SubChild& self, int a) {
         printf("before hook:%d\n", a);
@@ -209,52 +303,57 @@ void TestHookable() {
   s.hookableFunc(s, 10);
 }
 
-void dumpDetails() {
-  using T = Child2;
-  printf("==== subclass details of %s ====\n", get<0>(class_meta_v<T>));
+template <typename T>
+struct TempSubChild : SubChild {
+  TrefSubType(TempSubChild);
+  T newVal;
+  TrefMember(newVal);
+};
 
-  each_subclass<T>([](auto c, auto info, int level) {
-    using T = remove_pointer_t<decltype(c)>;
-    auto [clsName, sz, basePtr] = info;
-    auto parent = "";
-    if constexpr (has_base_v<T>) {
-      parent = get<0>(class_meta_v<base_class_t<T>>);
-    }
+// TODO:
+// static_assert(hasSubClass<Base>("TempSubChild"));
+// auto f = hasSubClass<Base>("TempSubChild");
 
-    printf("=====\n");
-    printf("type:%s, parent:%s, sz: %d\n", clsName, parent, sz);
+struct SubChildOfTempSubChild1 : TempSubChild<int> {
+  TrefSubType(SubChildOfTempSubChild1);
+};
 
-    int cnt = 1;
-    each_member<T>([&](auto name, auto ptr, auto meta, int level) {
-      if constexpr (std::is_base_of_v<Meta, decltype(meta)>) {
-        printf("field %d:%s, type:%s, %s\n", cnt, name, typeid(ptr).name(),
-               meta.to_string().c_str());
-      } else {
-        printf("field %d:%s, type:%s\n", cnt, name, typeid(ptr).name());
-      }
-      cnt++;
-      return true;
-    });
+static_assert(hasSubClass<Base>("SubChildOfTempSubChild1"));
 
-    return true;
-  });
-}
+struct SubChildOfTempSubChild2 : TempSubChild<float> {
+  TrefSubType(SubChildOfTempSubChild2);
+};
 
-TrefEnumGlobal(EnumA, Ass = 1, Ban = 4);
-static_assert(enum_to_string(EnumA::Ass) == "Ass");
-static_assert(string_to_enum("Ban", EnumA::Ass) == EnumA::Ban);
+struct SubChildOfTempSubChild3 : TempSubChild<double> {
+  TrefSubType(SubChildOfTempSubChild3);
+};
 
-void TestEnum() {
-  printf("========= Enum Members of %s ======\n", "EnumA");
-  enum_each<EnumA>([](auto val, auto name) {
-    printf("name: %.*s, val: %d\n", name.size(), name.data(), (int)val);
-  });
-  puts("==================");
-}
+//////////////////////////////////////////////////////////////////////////
+// reflection for external type
 
-void TestRef() {
+struct ExternalData : SubChild {
+  int age;
+  int age2;
+  float money;
+};
+
+struct BindExternalData {
+  TrefExternalSubType(ExternalData, SubChild);
+  TrefMember(age);
+  TrefMember(age2);
+  TrefMember(money);
+};
+
+static_assert(tref::has_base_v<ExternalData>);
+static_assert(is_same_v<tref::base_class_t<ExternalData>, SubChild>);
+static_assert(tref::is_reflected_v<ExternalData>);
+// TODO:
+// static_assert(hasSubClass<Base>("ExternalData"));
+// auto x = hasSubClass<Base>("ExternalData");
+
+void TestReflection() {
   TestEnum();
   dumpTree<Base>();
-  dumpDetails();
+  dumpDetails<Child2>();
   TestHookable();
 }
