@@ -77,32 +77,40 @@ static_assert(!is_same_v<base_class_t<SubTypeB>, TempType<int>>);
 //////////////////////////////////////////////////////////////////////////
 // enum test
 
+// global enum
+
 TrefEnumGlobal(EnumA, Ass = 1, Ban = (int)EnumA::Ass * 3);
+
 static_assert(enum_to_string(EnumA::Ass) == "Ass");
 static_assert(string_to_enum("Ban", EnumA::Ass) == EnumA::Ban);
+static_assert(enum_info_v<EnumA>.name == "EnumA");
+static_assert(enum_info_v<EnumA>.size == sizeof(EnumA));
+static_assert(enum_info_v<EnumA>.items.size() == 2);
+static_assert(enum_info_v<EnumA>.each_item([](auto name, auto val) {
+  switch (val) {
+    case EnumA::Ass:
+      return name == "Ass";
+    case EnumA::Ban:
+      return name == "Ban";
+    default:
+      return false;
+  }
+}));
+
+// external enum
 
 enum class ExternalEnum { Value1 = 1, Value2 = Value1 + 4 };
 TrefEnumImp(ExternalEnum, Value1, Value2);
+
 static_assert(enum_info_v<ExternalEnum>.name == "ExternalEnum");
 static_assert(enum_info_v<ExternalEnum>.size == sizeof(ExternalEnum));
 static_assert(enum_info_v<ExternalEnum>.items.size() == 2);
 
-template <typename T>
-void DumpEnum() {
-  printf("========= Enum Members of %s ======\n", enum_info_v<T>.name.data());
-  enum_info_v<T>.each_item([](auto name, auto val) {
-    printf("name: %.*s, val: %d\n", name.size(), name.data(), (int)val);
-  });
-  puts("==================");
-}
-
-void TestEnum() {
-  DumpEnum<EnumA>();
-  DumpEnum<ExternalEnum>();
-}
+// enum in class
 
 struct DataWithEnumMemType {
   TrefType(DataWithEnumMemType);
+
   TrefEnum(EnumF, ValA = 1, ValB = 12);
   TrefMemberType(EnumF);
 };
@@ -112,6 +120,21 @@ static_assert(
       static_assert(is_enum_v<T> && is_same_v<T, DataWithEnumMemType::EnumF>);
       return info.name == "EnumF";
     }));
+
+template <typename T>
+void DumpEnum() {
+  printf("========= Enum Members of %s ======\n", enum_info_v<T>.name.data());
+  enum_info_v<T>.each_item([](auto name, auto val) {
+    printf("name: %.*s, val: %d\n", name.size(), name.data(), (int)val);
+    return true;
+  });
+  puts("==================");
+}
+
+void TestEnum() {
+  DumpEnum<EnumA>();
+  DumpEnum<ExternalEnum>();
+}
 
 //////////////////////////////////////////////////////////////////////////
 
