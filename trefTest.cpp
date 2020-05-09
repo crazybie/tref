@@ -119,7 +119,7 @@ template <typename T>
 constexpr bool hasSubClass(const string_view& name) {
   auto found = false;
   imp::each<T, imp::SubclassTag>([&](auto info) {
-    using C = remove_pointer_t<tuple_element_t<1, decltype(info)>>;
+    using C = remove_pointer_t<decltype(info)>;
     if (name == class_info_v<C>.name) {
       found = true;
       return false;
