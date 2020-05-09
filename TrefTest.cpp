@@ -336,6 +336,11 @@ static_assert(tref::is_reflected_v<ExternalData>);
 static_assert(tref::has_base_v<ExternalData>);
 static_assert(is_same_v<tref::base_class_t<ExternalData>, SubChild>);
 
+//////////////////////////////////////////////////////////////////////////
+// subclass system test
+
+// Test the subclass system behind all the definition of subclasses,
+// Please see the `NOTE` of the each_subclass_r function.
 static_assert(hasSubclass<Base>("SubChild"));
 static_assert(hasSubclass<Base>("TempSubChild"));
 static_assert(hasSubclass<Base>("SubChildOfTempSubChild1"));
