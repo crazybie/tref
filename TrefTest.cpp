@@ -1,8 +1,8 @@
-#include "tref.h"
-
 #include <functional>
 #include <iostream>
 #include <sstream>
+
+#include "tref.h"
 
 using namespace std;
 using namespace tref;
@@ -54,7 +54,9 @@ struct TempType : TypeB {
 
 static_assert(class_info_v<TempType<int>>.name == "TempType");
 static_assert(class_info_v<TempType<int>>.each_direct_member([](auto info) {
-  return info.name == "tempVal";
+  using mem_t = decltype(info.value);
+  return info.name == "tempVal" && is_same_v<object_t<mem_t>, TempType<int>> &&
+         is_same_v<remove_object_t<mem_t>, int>;
 }));
 
 struct SubTypeA : TempType<int> {
@@ -69,7 +71,6 @@ struct SubTypeB : TempType<float> {
 
 static_assert(is_same_v<base_class_t<SubTypeB>, TempType<float>>);
 static_assert(!is_same_v<base_class_t<SubTypeB>, TempType<int>>);
-static_assert(is_same_v<base_class_t<SubTypeB>, TempType<float>>);
 
 //////////////////////////////////////////////////////////////////////////
 // enum test
