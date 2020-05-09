@@ -124,12 +124,13 @@ constexpr bool hasSubclass(string_view name) {
 
 template <class T>
 void dumpTree() {
-  printf("===== All Subclass of %s====\n", class_info_v<T>.name.data());
+  printf("===== All Subclass of %s ====\n", class_info_v<T>.name.data());
 
   class_info_v<T>.each_subclass_r([&](auto info, int level) {
     for (int i = 0; i < 4 * level; i++)
       printf(" ");
-    printf("%s\n", info.name.data());
+    printf("%s (rtti: %s)\n", info.name.data(),
+           typeid(decltype(info)::class_t).name());
     return true;
   });
   puts("============");
@@ -146,20 +147,26 @@ void dumpDetails() {
       parent = class_info_v<base_class_t<S>>.name;
     }
 
-    printf("=====\n");
-    printf("type:%s, parent:%s, sz: %d\n", info.name.data(), parent.data(),
-           info.size);
+    printf("==================\n");
+    printf("type: %6s, parent: %6s, size: %d\n", info.name.data(),
+           parent.data(), info.size);
+    printf("--- members ---\n");
 
-    int cnt = 0;
-    class_info_v<S>.each_member_r([&](auto info, int) {
-      if constexpr (std::is_base_of_v<Meta, decltype(info.meta)>) {
-        printf("field %d:%s, type:%s, %s\n", cnt, info.name.data(),
-               typeid(info.value).name(), info.meta.to_string().c_str());
-      } else {
-        printf("field %d:%s, type:%s\n", cnt, info.name.data(),
-               typeid(info.value).name());
+    int preLv = 0;
+    class_info_v<S>.each_member_r([&](auto info, int lv) {
+      if (lv != preLv) {
+        auto owner = class_info_v<decltype(info)::class_t>.name;
+        printf("--- from %s ---\n", owner.data());
       }
-      cnt++;
+      preLv = lv;
+
+      printf("%-12s: type: %s", info.name.data(), typeid(info.value).name());
+
+      if constexpr (std::is_base_of_v<Meta, decltype(info.meta)>) {
+        printf(", meta: %s\n", info.meta.to_string().c_str());
+      } else {
+        printf("\n");
+      }
       return true;
     });
 
