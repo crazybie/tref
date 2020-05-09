@@ -42,7 +42,9 @@ static_assert(class_info_v<TypeB>.each_direct_member([](auto info) {
          is_same_v<remove_object_t<mem_t>, decltype(TypeB{}.foo)>;
 }));
 static_assert(class_info_v<TypeB>.each_member_r([](auto info, int lv) {
-  return (lv == 0 || lv == 1) && (info.name == "foo" || info.name == "val");
+  if (lv == 0)
+    return info.name == "foo";
+  return lv == 1 && info.name == "val";
 }));
 
 template <typename T>
