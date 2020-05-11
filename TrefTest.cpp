@@ -10,6 +10,7 @@ using namespace tref;
 //////////////////////////////////////////////////////////////////////////
 // basic usage
 
+//////////////////////////////
 // simple class
 
 struct TypeA {
@@ -23,13 +24,14 @@ static_assert(class_info_v<TypeA>.name == "TypeA");
 static_assert(class_info_v<TypeA>.size == sizeof(TypeA));
 static_assert(class_info_v<TypeA>.each_direct_member([](auto info) {
   using mem_t = decltype(info.value);
-  return info.name == "val" && is_same_v<object_t<mem_t>, TypeA> &&
-         is_same_v<remove_object_t<mem_t>, decltype(TypeA{}.val)>;
+  return info.name == "val" && is_same_v<enclosing_class_t<mem_t>, TypeA> &&
+         is_same_v<member_t<mem_t>, decltype(TypeA{}.val)>;
 }));
 static_assert(class_info_v<TypeA>.each_member_r([](auto info, int lv) {
   return lv == 0 && info.name == "val";
 }));
 
+//////////////////////////////
 // subclass
 
 struct TypeB : TypeA {
@@ -42,8 +44,8 @@ static_assert(is_same_v<base_class_t<TypeB>, TypeA>);
 static_assert(is_same_v<decltype(class_info_v<TypeB>.base)::type, TypeA>);
 static_assert(class_info_v<TypeB>.each_direct_member([](auto info) {
   using mem_t = decltype(info.value);
-  return info.name == "foo" && is_same_v<object_t<mem_t>, TypeB> &&
-         is_same_v<remove_object_t<mem_t>, decltype(TypeB{}.foo)>;
+  return info.name == "foo" && is_same_v<enclosing_class_t<mem_t>, TypeB> &&
+         is_same_v<member_t<mem_t>, decltype(TypeB{}.foo)>;
 }));
 static_assert(class_info_v<TypeB>.each_member_r([](auto info, int lv) {
   if (lv == 0)
@@ -51,6 +53,7 @@ static_assert(class_info_v<TypeB>.each_member_r([](auto info, int lv) {
   return lv == 1 && info.name == "val";
 }));
 
+//////////////////////////////
 // template subclass
 
 template <typename T>
@@ -63,8 +66,9 @@ struct TempType : TypeB {
 static_assert(class_info_v<TempType<int>>.name == "TempType");
 static_assert(class_info_v<TempType<int>>.each_direct_member([](auto info) {
   using mem_t = decltype(info.value);
-  return info.name == "tempVal" && is_same_v<object_t<mem_t>, TempType<int>> &&
-         is_same_v<remove_object_t<mem_t>, int>;
+  return info.name == "tempVal" &&
+         is_same_v<enclosing_class_t<mem_t>, TempType<int>> &&
+         is_same_v<member_t<mem_t>, int>;
 }));
 
 struct SubTypeA : TempType<int> {
@@ -80,6 +84,7 @@ struct SubTypeB : TempType<float> {
 static_assert(is_same_v<base_class_t<SubTypeB>, TempType<float>>);
 static_assert(!is_same_v<base_class_t<SubTypeB>, TempType<int>>);
 
+//////////////////////////////
 // class meta
 
 struct FakeMeta {
@@ -88,15 +93,124 @@ struct FakeMeta {
 };
 
 // A computed meta
-constexpr int makeMetaFoo(int v) {
-  return v * 100;
+constexpr int makeMetaFoo(int a, int b) {
+  return a + b;
 }
 
 struct ClassWithMeta {
-  TrefTypeWithMeta(ClassWithMeta, (FakeMeta{makeMetaFoo(1), 22}));
+  TrefTypeWithMeta(ClassWithMeta, (FakeMeta{makeMetaFoo(1, 2), 22}));
 };
-static_assert(class_info_v<ClassWithMeta>.meta.foo == 100);
+static_assert(class_info_v<ClassWithMeta>.meta.foo == 3);
 static_assert(class_info_v<ClassWithMeta>.meta.bar == 22);
+
+//////////////////////////////
+// external template class as member
+
+template <typename A, typename B>
+struct ReflectedTemplate {
+  TrefType(ReflectedTemplate);
+
+  A a;
+  TrefMember(a);
+};
+
+struct UsingTemplateIntance {
+  TrefType(UsingTemplateIntance);
+
+  ReflectedTemplate<int, float> a;
+  TrefMember(a);
+};
+
+static_assert(class_info_v<decltype(UsingTemplateIntance{}.a)>.name ==
+              "ReflectedTemplate");
+static_assert(
+    class_info_v<UsingTemplateIntance>.each_direct_member([](auto info) {
+      using MT = decltype(info)::member_t;
+      return class_info_v<MT>.name == "ReflectedTemplate";
+    }));
+
+//////////////////////////////
+
+struct TestIsMember {
+  TrefType(TestIsMember);
+
+  static constexpr auto staticVal = 0;
+  TrefMember(staticVal);
+
+  int memberVal;
+  TrefMember(memberVal);
+};
+
+static_assert(class_info_v<TestIsMember>.each_direct_member([](auto info) {
+  if (info.name == "staticVal")
+    return !info.is_member_v;
+  if (info.name == "memberVal")
+    return info.is_member_v;
+  return false;
+}));
+
+//////////////////////////////////////////
+// Test template instance as macro argument
+
+template <typename, typename>
+struct MetaMultiArgs {};
+
+struct TestMultipleArgsToMacro {
+  TrefTypeWithMeta(TestMultipleArgsToMacro, (MetaMultiArgs<int, float>{}));
+
+  template <typename A, typename B>
+  static constexpr auto MultiArgsVar_v = A(0) + B(1);
+
+  TrefMemberWithMeta((MultiArgsVar_v<int, int>),
+                     (MetaMultiArgs<float, char>{}));
+
+  template <typename, typename, typename>
+  struct T {};
+
+  TrefMemberTypeWithMeta((T<int, float, string>),
+                         (MetaMultiArgs<float, char>{}));
+};
+
+//////////////////////////////////
+
+struct TestInnerTemplate {
+  TrefType(TestInnerTemplate);
+
+  template <typename C>
+  struct InnerTemplate {
+    TrefType(InnerTemplate);
+
+    int a;
+    TrefMember(a);
+  };
+
+  TrefMemberType(InnerTemplate<int>);
+};
+
+static_assert(class_info_v<TestInnerTemplate::InnerTemplate<int>>.name ==
+              "InnerTemplate");
+
+// Can access the reflection info of the inner template.
+static_assert(
+    class_info_v<TestInnerTemplate::InnerTemplate<int>>.each_direct_member(
+        [](auto info) {
+          static_assert(is_same_v<decltype(info)::member_t, int>);
+          return info.name == "a";
+        }));
+
+static_assert(
+    class_info_v<TestInnerTemplate>.each_direct_member_type([](auto info) {
+      using MT = decltype(info.value)::type;
+      static_assert(is_same_v<MT, TestInnerTemplate::InnerTemplate<int>>);
+
+// FIXME: MSVC crashed. Not support accessing the reflection info of
+// member template instance in the iteration of enclosing class.
+#ifndef _MSC_VER
+      static_assert(class_info_v<MT>.name == "InnerTemplate");
+#endif  // _MSC_VER
+
+      return info.name == "InnerTemplate<int>";
+    }));
 
 //////////////////////////////////////////////////////////////////////////
 // enum test
@@ -170,6 +284,7 @@ void TestEnum() {
 }
 
 //////////////////////////////////////////////////////////////////////////
+// reflection of hierarchy with custom meta
 
 template <typename T>
 constexpr bool hasSubclass(string_view name) {
@@ -214,7 +329,7 @@ void dumpDetails() {
     int preLv = 0;
     class_info_v<S>.each_member_r([&](auto info, int lv) {
       if (lv != preLv) {
-        auto owner = class_info_v<decltype(info)::class_t>.name;
+        auto owner = class_info_v<decltype(info)::enclosing_class_t>.name;
         printf("--- from %s ---\n", owner.data());
       }
       preLv = lv;
@@ -232,9 +347,6 @@ void dumpDetails() {
     return true;
   });
 }
-
-//////////////////////////////////////////////////////////////////////////
-// reflection of hierarchy with custom meta
 
 struct Meta {
   const char* desc;
