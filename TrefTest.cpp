@@ -10,6 +10,8 @@ using namespace tref;
 //////////////////////////////////////////////////////////////////////////
 // basic usage
 
+// simple class
+
 struct TypeA {
   TrefType(TypeA);
   int val;
@@ -27,6 +29,8 @@ static_assert(class_info_v<TypeA>.each_direct_member([](auto info) {
 static_assert(class_info_v<TypeA>.each_member_r([](auto info, int lv) {
   return lv == 0 && info.name == "val";
 }));
+
+// subclass
 
 struct TypeB : TypeA {
   TrefType(TypeB);
@@ -46,6 +50,8 @@ static_assert(class_info_v<TypeB>.each_member_r([](auto info, int lv) {
     return info.name == "foo";
   return lv == 1 && info.name == "val";
 }));
+
+// template subclass
 
 template <typename T>
 struct TempType : TypeB {
@@ -74,14 +80,22 @@ struct SubTypeB : TempType<float> {
 static_assert(is_same_v<base_class_t<SubTypeB>, TempType<float>>);
 static_assert(!is_same_v<base_class_t<SubTypeB>, TempType<int>>);
 
+// class meta
+
 struct FakeMeta {
   int foo;
   float bar;
 };
+
+// A computed meta
+constexpr int makeMetaFoo(int v) {
+  return v * 100;
+}
+
 struct ClassWithMeta {
-  TrefTypeWithMeta(ClassWithMeta, (FakeMeta{11, 22}));
+  TrefTypeWithMeta(ClassWithMeta, (FakeMeta{makeMetaFoo(1), 22}));
 };
-static_assert(class_info_v<ClassWithMeta>.meta.foo == 11);
+static_assert(class_info_v<ClassWithMeta>.meta.foo == 100);
 static_assert(class_info_v<ClassWithMeta>.meta.bar == 22);
 
 //////////////////////////////////////////////////////////////////////////
@@ -233,10 +247,10 @@ struct Meta {
 };
 
 template <typename T>
-struct NumberMeta : Meta {
+struct MetaNumber : Meta {
   T minV, maxV;
 
-  constexpr NumberMeta(const char* desc_, T minV_, T maxV_)
+  constexpr MetaNumber(const char* desc_, T minV_, T maxV_)
       : Meta{desc_}, minV(minV_), maxV(maxV_) {}
 
   std::string to_string() {
@@ -245,6 +259,33 @@ struct NumberMeta : Meta {
     return o.str();
   }
 };
+
+struct MetaExportedClass {
+  template <typename T>
+  static void dumpAll() {
+    printf("===== All Exported Class ====\n");
+    class_info_v<T>.each_subclass_r([&](auto info, int) {
+      if constexpr (is_base_of_v<MetaExportedClass, decltype(info.meta)>) {
+        printf("%s\n", info.name.data());
+      }
+      return true;
+    });
+    puts("============");
+  }
+};
+
+template <typename T, typename... Args>
+struct MetaValidatableFunc {
+  using Validate = bool (*)(T&, Args...);
+  Validate validate = nullptr;
+
+  constexpr MetaValidatableFunc(Validate vv) : validate(vv) {}
+  std::string to_string() { return ""; };
+};
+
+struct MetaHookableFunc {};
+
+/////////////////////////////////////
 
 struct Base {
   TrefRootType(Base);
@@ -258,8 +299,8 @@ struct Data : Base {
   TrefMemberWithMeta(t, Meta{"test"});
 
   int x, y;
-  TrefMemberWithMeta(x, (NumberMeta{"pos x", 1, 100}));
-  TrefMemberWithMeta(y, (NumberMeta{"pos y", 1, 100}));
+  TrefMemberWithMeta(x, (MetaNumber{"pos x", 1, 100}));
+  TrefMemberWithMeta(y, (MetaNumber{"pos y", 1, 100}));
 
   std::string name{"boo"};
   TrefMemberWithMeta(name, Meta{"entity name"});
@@ -279,57 +320,57 @@ struct Child2 : Data<float> {
   TrefMember(zz);
 };
 
-template <typename T, typename... Args>
-struct ValidatableFuncMeta {
-  using Validate = bool (*)(T&, Args...);
-  Validate validate = nullptr;
-
-  constexpr ValidatableFuncMeta(Validate vv) : validate(vv) {}
-  std::string to_string() { return ""; };
-};
-
-struct HookableFuncMeta {
-  constexpr HookableFuncMeta() {}
-};
-
 struct SubChild : Child2 {
-  TrefSubType(SubChild);
+  TrefSubTypeWithMeta(SubChild, MetaExportedClass{});
+
+  int subVal = 99;
 
   const char* ff = "subchild";
   TrefMember(ff);
 
-  void func(int a) { printf("func called with arg:%d\n", a); }
+  void func(int a) {
+    printf("func called with arg:%d, subVal:%d\n", a, subVal);
+  }
   static bool func_validate(self_t& self, int a) {
-    printf("do validation with arg:%d", a);
+    printf("check if arg > 0: arg=%d", a);
     return a > 0;
   }
-  TrefMemberWithMeta(func, ValidatableFuncMeta{func_validate});
+  TrefMemberWithMeta(func, MetaValidatableFunc{func_validate});
 
   function<void(self_t&, int)> hookableFunc = [](self_t& self, int a) {
-    printf("hookable func called with arg: %s, %d\n", self.ff, a);
+    printf("hookable func called with arg: %d, str:%s, subVal:%d\n", a, self.ff,
+           self.subVal);
   };
-  TrefMemberWithMeta(hookableFunc, HookableFuncMeta{});
+  TrefMemberWithMeta(hookableFunc, MetaHookableFunc{});
 };
 
 void TestHookable() {
+  printf("======== Test Hookable =========\n");
   SubChild s;
 
   // call validatable functions
-  class_info_v<SubChild>.each_member_r([&](auto info, int) {
-    using ValidateFunc = ValidatableFuncMeta<SubChild, int>;
-    if constexpr (std::is_base_of_v<ValidateFunc, decltype(info.meta)>) {
-      auto v = info.value;
-      auto arg = -1;
-      if (info.meta.validate(s, arg)) {
-        (s.*v)(arg);
+  auto callValidatableFunc = [&](int arg) {
+    class_info_v<SubChild>.each_member_r([&](auto info, int) {
+      using ValidateFunc = MetaValidatableFunc<SubChild, int>;
+      if constexpr (std::is_base_of_v<ValidateFunc, decltype(info.meta)>) {
+        auto v = info.value;
+        if (info.meta.validate(s, arg)) {
+          printf("\t validation passed\n");
+          (s.*v)(arg);
+        } else {
+          printf("\t validation failed\n");
+        }
       }
-    }
-    return true;
-  });
+      return true;
+    });
+  };
+
+  callValidatableFunc(-1);
+  callValidatableFunc(100);
 
   // call hookable functions
   class_info_v<SubChild>.each_member_r([&](auto info, int) {
-    if constexpr (std::is_base_of_v<HookableFuncMeta, decltype(info.meta)>) {
+    if constexpr (std::is_base_of_v<MetaHookableFunc, decltype(info.meta)>) {
       auto v = info.value;
       auto f = s.*v;
       s.*v = [ff = move(f)](SubChild& self, int a) {
@@ -340,6 +381,7 @@ void TestHookable() {
     return true;
   });
   s.hookableFunc(s, 10);
+  printf("====================\n");
 }
 
 template <typename T>
@@ -350,15 +392,15 @@ struct TempSubChild : SubChild {
 };
 
 struct SubChildOfTempSubChild1 : TempSubChild<int> {
-  TrefSubType(SubChildOfTempSubChild1);
+  TrefSubTypeWithMeta(SubChildOfTempSubChild1, MetaExportedClass{});
 };
 
 struct SubChildOfTempSubChild2 : TempSubChild<float> {
-  TrefSubType(SubChildOfTempSubChild2);
+  TrefSubTypeWithMeta(SubChildOfTempSubChild2, MetaExportedClass{});
 };
 
 struct SubChildOfTempSubChild3 : TempSubChild<double> {
-  TrefSubType(SubChildOfTempSubChild3);
+  TrefSubTypeWithMeta(SubChildOfTempSubChild3, MetaExportedClass{});
 };
 
 //////////////////////////////////////////////////////////////////////////
@@ -371,7 +413,7 @@ struct ExternalData : SubChild {
 };
 
 struct BindExternalData {
-  TrefExternalSubTypeWithMeta(ExternalData, SubChild, (FakeMeta{111, 222}));
+  TrefExternalSubTypeWithMeta(ExternalData, SubChild, (FakeMeta{333, 444}));
   TrefMember(age);
   TrefMember(age2);
   TrefMember(money);
@@ -380,8 +422,8 @@ struct BindExternalData {
 static_assert(tref::is_reflected_v<ExternalData>);
 static_assert(tref::has_base_v<ExternalData>);
 static_assert(is_same_v<tref::base_class_t<ExternalData>, SubChild>);
-static_assert(class_info_v<ExternalData>.meta.foo == 111);
-static_assert(class_info_v<ExternalData>.meta.bar == 222);
+static_assert(class_info_v<ExternalData>.meta.foo == 333);
+static_assert(class_info_v<ExternalData>.meta.bar == 444);
 
 //////////////////////////////////////////////////////////////////////////
 // subclass system test
@@ -400,5 +442,6 @@ void TestReflection() {
   TestEnum();
   dumpTree<Base>();
   dumpDetails<Child2>();
+  MetaExportedClass::dumpAll<Base>();
   TestHookable();
 }
