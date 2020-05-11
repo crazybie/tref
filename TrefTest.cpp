@@ -71,12 +71,31 @@ static_assert(is_same_v<base_class_t<SubTypeB>, TempType<float>>);
 static_assert(!is_same_v<base_class_t<SubTypeB>, TempType<int>>);
 static_assert(is_same_v<base_class_t<SubTypeB>, TempType<float>>);
 
+struct FakeMeta {
+  int foo;
+  float bar;
+};
+struct ClassWithMeta {
+  TrefTypeWithMeta(ClassWithMeta, (FakeMeta{11, 22}));
+};
+static_assert(class_info_v<ClassWithMeta>.meta.foo == 11);
+static_assert(class_info_v<ClassWithMeta>.meta.bar == 22);
+
 //////////////////////////////////////////////////////////////////////////
 // enum test
+struct FakeEnumMeta {
+  int foo;
+  int bar;
+};
 
-TrefEnumGlobal(EnumA, Ass = 1, Ban = (int)EnumA::Ass * 3);
+TrefEnumGlobalWithMeta(EnumA,
+                       (FakeEnumMeta{111, 222}),
+                       Ass = 1,
+                       Ban = (int)EnumA::Ass * 3);
 static_assert(enum_to_string(EnumA::Ass) == "Ass");
 static_assert(string_to_enum("Ban", EnumA::Ass) == EnumA::Ban);
+static_assert(enum_info_v<EnumA>.meta.foo == 111);
+static_assert(enum_info_v<EnumA>.meta.bar == 222);
 
 enum class ExternalEnum { Value1 = 1, Value2 = Value1 + 4 };
 TrefEnumImp(ExternalEnum, Value1, Value2);
@@ -213,8 +232,8 @@ struct Data : Base {
   TrefMemberWithMeta(t, Meta{"test"});
 
   int x, y;
-  TrefMemberWithMeta(x, NumberMeta{"pos x", 1, 100});
-  TrefMemberWithMeta(y, NumberMeta{"pos y", 1, 100});
+  TrefMemberWithMeta(x, (NumberMeta{"pos x", 1, 100}));
+  TrefMemberWithMeta(y, (NumberMeta{"pos y", 1, 100}));
 
   std::string name{"boo"};
   TrefMemberWithMeta(name, Meta{"entity name"});
@@ -326,7 +345,7 @@ struct ExternalData : SubChild {
 };
 
 struct BindExternalData {
-  TrefExternalSubType(ExternalData, SubChild);
+  TrefExternalSubTypeWithMeta(ExternalData, SubChild, (FakeMeta{111, 222}));
   TrefMember(age);
   TrefMember(age2);
   TrefMember(money);
@@ -335,6 +354,8 @@ struct BindExternalData {
 static_assert(tref::is_reflected_v<ExternalData>);
 static_assert(tref::has_base_v<ExternalData>);
 static_assert(is_same_v<tref::base_class_t<ExternalData>, SubChild>);
+static_assert(class_info_v<ExternalData>.meta.foo == 111);
+static_assert(class_info_v<ExternalData>.meta.bar == 222);
 
 static_assert(hasSubclass<Base>("SubChild"));
 static_assert(hasSubclass<Base>("TempSubChild"));
