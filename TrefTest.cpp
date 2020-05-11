@@ -1,8 +1,8 @@
-#include "tref.h"
-
 #include <functional>
 #include <iostream>
 #include <sstream>
+
+#include "tref.h"
 
 using namespace std;
 using namespace tref;
@@ -42,7 +42,9 @@ static_assert(class_info_v<TypeB>.each_direct_member([](auto info) {
          is_same_v<remove_object_t<mem_t>, decltype(TypeB{}.foo)>;
 }));
 static_assert(class_info_v<TypeB>.each_member_r([](auto info, int lv) {
-  return (lv == 0 || lv == 1) && (info.name == "foo" || info.name == "val");
+  if (lv == 0)
+    return info.name == "foo";
+  return lv == 1 && info.name == "val";
 }));
 
 template <typename T>
@@ -54,7 +56,9 @@ struct TempType : TypeB {
 
 static_assert(class_info_v<TempType<int>>.name == "TempType");
 static_assert(class_info_v<TempType<int>>.each_direct_member([](auto info) {
-  return info.name == "tempVal";
+  using mem_t = decltype(info.value);
+  return info.name == "tempVal" && is_same_v<object_t<mem_t>, TempType<int>> &&
+         is_same_v<remove_object_t<mem_t>, int>;
 }));
 
 struct SubTypeA : TempType<int> {
@@ -69,7 +73,6 @@ struct SubTypeB : TempType<float> {
 
 static_assert(is_same_v<base_class_t<SubTypeB>, TempType<float>>);
 static_assert(!is_same_v<base_class_t<SubTypeB>, TempType<int>>);
-static_assert(is_same_v<base_class_t<SubTypeB>, TempType<float>>);
 
 struct FakeMeta {
   int foo;
@@ -83,6 +86,9 @@ static_assert(class_info_v<ClassWithMeta>.meta.bar == 22);
 
 //////////////////////////////////////////////////////////////////////////
 // enum test
+
+// global enum
+
 struct FakeEnumMeta {
   int foo;
   int bar;
@@ -96,29 +102,34 @@ static_assert(enum_to_string(EnumA::Ass) == "Ass");
 static_assert(string_to_enum("Ban", EnumA::Ass) == EnumA::Ban);
 static_assert(enum_info_v<EnumA>.meta.foo == 111);
 static_assert(enum_info_v<EnumA>.meta.bar == 222);
+static_assert(enum_info_v<EnumA>.name == "EnumA");
+static_assert(enum_info_v<EnumA>.size == sizeof(EnumA));
+static_assert(enum_info_v<EnumA>.items.size() == 2);
+static_assert(enum_info_v<EnumA>.each_item([](auto name, auto val) {
+  switch (val) {
+    case EnumA::Ass:
+      return name == "Ass";
+    case EnumA::Ban:
+      return name == "Ban";
+    default:
+      return false;
+  }
+}));
+
+// external enum
 
 enum class ExternalEnum { Value1 = 1, Value2 = Value1 + 4 };
 TrefEnumImp(ExternalEnum, Value1, Value2);
+
 static_assert(enum_info_v<ExternalEnum>.name == "ExternalEnum");
 static_assert(enum_info_v<ExternalEnum>.size == sizeof(ExternalEnum));
 static_assert(enum_info_v<ExternalEnum>.items.size() == 2);
 
-template <typename T>
-void DumpEnum() {
-  printf("========= Enum Members of %s ======\n", enum_info_v<T>.name.data());
-  enum_info_v<T>.each_item([](auto name, auto val) {
-    printf("name: %.*s, val: %d\n", name.size(), name.data(), (int)val);
-  });
-  puts("==================");
-}
-
-void TestEnum() {
-  DumpEnum<EnumA>();
-  DumpEnum<ExternalEnum>();
-}
+// enum in class
 
 struct DataWithEnumMemType {
   TrefType(DataWithEnumMemType);
+
   TrefEnum(EnumF, ValA = 1, ValB = 12);
   TrefMemberType(EnumF);
 };
@@ -128,6 +139,21 @@ static_assert(
       static_assert(is_enum_v<T> && is_same_v<T, DataWithEnumMemType::EnumF>);
       return info.name == "EnumF";
     }));
+
+template <typename T>
+void DumpEnum() {
+  printf("========= Enum Members of %s ======\n", enum_info_v<T>.name.data());
+  enum_info_v<T>.each_item([](auto name, auto val) {
+    printf("name: %.*s, val: %d\n", name.size(), name.data(), (int)val);
+    return true;
+  });
+  puts("==================");
+}
+
+void TestEnum() {
+  DumpEnum<EnumA>();
+  DumpEnum<ExternalEnum>();
+}
 
 //////////////////////////////////////////////////////////////////////////
 
@@ -357,6 +383,11 @@ static_assert(is_same_v<tref::base_class_t<ExternalData>, SubChild>);
 static_assert(class_info_v<ExternalData>.meta.foo == 111);
 static_assert(class_info_v<ExternalData>.meta.bar == 222);
 
+//////////////////////////////////////////////////////////////////////////
+// subclass system test
+
+// Test the subclass system behind all the definition of subclasses,
+// Please see the `NOTE` of the each_subclass_r function.
 static_assert(hasSubclass<Base>("SubChild"));
 static_assert(hasSubclass<Base>("TempSubChild"));
 static_assert(hasSubclass<Base>("SubChildOfTempSubChild1"));
