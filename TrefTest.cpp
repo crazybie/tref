@@ -19,15 +19,15 @@ struct TypeA {
   TrefMember(val);
 };
 
-static_assert(is_reflected_v<TypeA>);
-static_assert(class_info_v<TypeA>.name == "TypeA");
-static_assert(class_info_v<TypeA>.size == sizeof(TypeA));
-static_assert(class_info_v<TypeA>.each_direct_member([](auto info) {
+static_assert(is_reflected<TypeA>());
+static_assert(get_class_info<TypeA>().name == "TypeA");
+static_assert(get_class_info<TypeA>().size == sizeof(TypeA));
+static_assert(get_class_info<TypeA>().each_direct_member([](auto info) {
   using mem_t = decltype(info.value);
   return info.name == "val" && is_same_v<enclosing_class_t<mem_t>, TypeA> &&
          is_same_v<member_t<mem_t>, decltype(TypeA{}.val)>;
 }));
-static_assert(class_info_v<TypeA>.each_member_r([](auto info, int lv) {
+static_assert(get_class_info<TypeA>().each_member_r([](auto info, int lv) {
   return lv == 0 && info.name == "val";
 }));
 
@@ -40,14 +40,15 @@ struct TypeB : TypeA {
   TrefMember(foo);
 };
 
-static_assert(is_same_v<base_class_t<TypeB>, TypeA>);
-static_assert(is_same_v<decltype(class_info_v<TypeB>.base)::type, TypeA>);
-static_assert(class_info_v<TypeB>.each_direct_member([](auto info) {
+static_assert(has_base_class<TypeB>());
+static_assert(is_same_v<TrefBaseClass(TypeB), TypeA>);
+static_assert(is_same_v<decltype(get_class_info<TypeB>())::base_t, TypeA>);
+static_assert(get_class_info<TypeB>().each_direct_member([](auto info) {
   using mem_t = decltype(info.value);
   return info.name == "foo" && is_same_v<enclosing_class_t<mem_t>, TypeB> &&
          is_same_v<member_t<mem_t>, decltype(TypeB{}.foo)>;
 }));
-static_assert(class_info_v<TypeB>.each_member_r([](auto info, int lv) {
+static_assert(get_class_info<TypeB>().each_member_r([](auto info, int lv) {
   if (lv == 0)
     return info.name == "foo";
   return lv == 1 && info.name == "val";
@@ -63,8 +64,8 @@ struct TempType : TypeB {
   TrefMember(tempVal);
 };
 
-static_assert(class_info_v<TempType<int>>.name == "TempType");
-static_assert(class_info_v<TempType<int>>.each_direct_member([](auto info) {
+static_assert(get_class_info<TempType<int>>().name == "TempType");
+static_assert(get_class_info<TempType<int>>().each_direct_member([](auto info) {
   using mem_t = decltype(info.value);
   return info.name == "tempVal" &&
          is_same_v<enclosing_class_t<mem_t>, TempType<int>> &&
@@ -74,15 +75,15 @@ static_assert(class_info_v<TempType<int>>.each_direct_member([](auto info) {
 struct SubTypeA : TempType<int> {
   TrefType(SubTypeA);
 };
-static_assert(is_same_v<base_class_t<SubTypeA>, TempType<int>>);
-static_assert(!is_same_v<base_class_t<SubTypeA>, TempType<float>>);
+static_assert(is_same_v<TrefBaseClass(SubTypeA), TempType<int>>);
+static_assert(!is_same_v<TrefBaseClass(SubTypeA), TempType<float>>);
 
 struct SubTypeB : TempType<float> {
   TrefType(SubTypeB);
 };
 
-static_assert(is_same_v<base_class_t<SubTypeB>, TempType<float>>);
-static_assert(!is_same_v<base_class_t<SubTypeB>, TempType<int>>);
+static_assert(is_same_v<TrefBaseClass(SubTypeB), TempType<float>>);
+static_assert(!is_same_v<TrefBaseClass(SubTypeB), TempType<int>>);
 
 //////////////////////////////
 // class meta
@@ -100,8 +101,8 @@ constexpr int makeMetaFoo(int a, int b) {
 struct ClassWithMeta {
   TrefTypeWithMeta(ClassWithMeta, (FakeMeta{makeMetaFoo(1, 2), 22}));
 };
-static_assert(class_info_v<ClassWithMeta>.meta.foo == 3);
-static_assert(class_info_v<ClassWithMeta>.meta.bar == 22);
+static_assert(get_class_info<ClassWithMeta>().meta.foo == 3);
+static_assert(get_class_info<ClassWithMeta>().meta.bar == 22);
 
 //////////////////////////////
 // external template class as member
@@ -121,12 +122,12 @@ struct UsingTemplateIntance {
   TrefMember(a);
 };
 
-static_assert(class_info_v<decltype(UsingTemplateIntance{}.a)>.name ==
+static_assert(get_class_info<decltype(UsingTemplateIntance{}.a)>().name ==
               "ReflectedTemplate");
 static_assert(
-    class_info_v<UsingTemplateIntance>.each_direct_member([](auto info) {
+    get_class_info<UsingTemplateIntance>().each_direct_member([](auto info) {
       using MT = decltype(info)::member_t;
-      return class_info_v<MT>.name == "ReflectedTemplate";
+      return get_class_info<MT>().name == "ReflectedTemplate";
     }));
 
 //////////////////////////////
@@ -141,7 +142,7 @@ struct TestIsMember {
   TrefMember(memberVal);
 };
 
-static_assert(class_info_v<TestIsMember>.each_direct_member([](auto info) {
+static_assert(get_class_info<TestIsMember>().each_direct_member([](auto info) {
   if (info.name == "staticVal")
     return !info.is_member_v;
   if (info.name == "memberVal")
@@ -187,27 +188,21 @@ struct TestInnerTemplate {
   TrefMemberType(InnerTemplate<int>);
 };
 
-static_assert(class_info_v<TestInnerTemplate::InnerTemplate<int>>.name ==
+static_assert(get_class_info<TestInnerTemplate::InnerTemplate<int>>().name ==
               "InnerTemplate");
 
-// Can access the reflection info of the inner template.
-static_assert(
-    class_info_v<TestInnerTemplate::InnerTemplate<int>>.each_direct_member(
-        [](auto info) {
-          static_assert(is_same_v<decltype(info)::member_t, int>);
-          return info.name == "a";
-        }));
+static_assert(get_class_info<TestInnerTemplate::InnerTemplate<int>>()
+                  .each_direct_member([](auto info) {
+                    static_assert(is_same_v<decltype(info)::member_t, int>);
+                    return info.name == "a";
+                  }));
 
 static_assert(
-    class_info_v<TestInnerTemplate>.each_direct_member_type([](auto info) {
+    get_class_info<TestInnerTemplate>().each_direct_member_type([](auto info) {
       using MT = decltype(info.value)::type;
-      static_assert(is_same_v<MT, TestInnerTemplate::InnerTemplate<int>>);
 
-// FIXME: MSVC crashed. Not support accessing the reflection info of
-// member template instance in the iteration of enclosing class.
-#ifndef _MSC_VER
-      static_assert(class_info_v<MT>.name == "InnerTemplate");
-#endif  // _MSC_VER
+      static_assert(is_same_v<MT, TestInnerTemplate::InnerTemplate<int>>);
+      static_assert(get_class_info<MT>().name == "InnerTemplate");
 
       return info.name == "InnerTemplate<int>";
     }));
@@ -228,12 +223,12 @@ TrefEnumGlobalWithMeta(EnumA,
                        Ban = (int)EnumA::Ass * 3);
 static_assert(enum_to_string(EnumA::Ass) == "Ass");
 static_assert(string_to_enum("Ban", EnumA::Ass) == EnumA::Ban);
-static_assert(enum_info_v<EnumA>.meta.foo == 111);
-static_assert(enum_info_v<EnumA>.meta.bar == 222);
-static_assert(enum_info_v<EnumA>.name == "EnumA");
-static_assert(enum_info_v<EnumA>.size == sizeof(EnumA));
-static_assert(enum_info_v<EnumA>.items.size() == 2);
-static_assert(enum_info_v<EnumA>.each_item([](auto name, auto val) {
+static_assert(get_enum_info<EnumA>().meta.foo == 111);
+static_assert(get_enum_info<EnumA>().meta.bar == 222);
+static_assert(get_enum_info<EnumA>().name == "EnumA");
+static_assert(get_enum_info<EnumA>().size == sizeof(EnumA));
+static_assert(get_enum_info<EnumA>().items.size() == 2);
+static_assert(get_enum_info<EnumA>().each_item([](auto name, auto val) {
   switch (val) {
     case EnumA::Ass:
       return name == "Ass";
@@ -249,9 +244,9 @@ static_assert(enum_info_v<EnumA>.each_item([](auto name, auto val) {
 enum class ExternalEnum { Value1 = 1, Value2 = Value1 + 4 };
 TrefEnumImp(ExternalEnum, Value1, Value2);
 
-static_assert(enum_info_v<ExternalEnum>.name == "ExternalEnum");
-static_assert(enum_info_v<ExternalEnum>.size == sizeof(ExternalEnum));
-static_assert(enum_info_v<ExternalEnum>.items.size() == 2);
+static_assert(get_enum_info<ExternalEnum>().name == "ExternalEnum");
+static_assert(get_enum_info<ExternalEnum>().size == sizeof(ExternalEnum));
+static_assert(get_enum_info<ExternalEnum>().items.size() == 2);
 
 // enum in class
 
@@ -261,8 +256,8 @@ struct DataWithEnumMemType {
   TrefEnum(EnumF, ValA = 1, ValB = 12);
   TrefMemberType(EnumF);
 };
-static_assert(
-    class_info_v<DataWithEnumMemType>.each_direct_member_type([](auto info) {
+static_assert(get_class_info<DataWithEnumMemType>().each_direct_member_type(
+    [](auto info) {
       using T = decltype(info.value)::type;
       static_assert(is_enum_v<T> && is_same_v<T, DataWithEnumMemType::EnumF>);
       return info.name == "EnumF";
@@ -270,8 +265,9 @@ static_assert(
 
 template <typename T>
 void DumpEnum() {
-  printf("========= Enum Members of %s ======\n", enum_info_v<T>.name.data());
-  enum_info_v<T>.each_item([](auto name, auto val) {
+  printf("========= Enum Members of %s ======\n",
+         get_enum_info<T>().name.data());
+  get_enum_info<T>().each_item([](auto name, auto val) {
     printf("name: %.*s, val: %d\n", name.size(), name.data(), (int)val);
     return true;
   });
@@ -289,7 +285,7 @@ void TestEnum() {
 template <typename T>
 constexpr bool hasSubclass(string_view name) {
   auto found = false;
-  class_info_v<T>.each_subclass_r([&](auto info, int) {
+  get_class_info<T>().each_subclass_r([&](auto info, int) {
     found = info.name == name;
     return !found;
   });
@@ -298,11 +294,13 @@ constexpr bool hasSubclass(string_view name) {
 
 template <class T>
 void dumpTree() {
-  printf("===== All Subclass of %s ====\n", class_info_v<T>.name.data());
+  printf("===== All Subclass of %s ====\n", get_class_info<T>().name.data());
 
-  class_info_v<T>.each_subclass_r([&](auto info, int level) {
+  get_class_info<T>().each_subclass_r([&](auto info, int level) {
     for (int i = 0; i < 4 * level; i++)
       printf(" ");
+
+    assert(info.name.size() > 0);
     printf("%s (rtti: %s)\n", info.name.data(),
            typeid(decltype(info)::class_t).name());
     return true;
@@ -312,13 +310,13 @@ void dumpTree() {
 
 template <typename T>
 void dumpDetails() {
-  printf("==== subclass details of %s ====\n", class_info_v<T>.name.data());
+  printf("==== subclass details of %s ====\n", get_class_info<T>().name.data());
 
-  class_info_v<T>.each_subclass_r([](auto info, int) {
+  get_class_info<T>().each_subclass_r([](auto info, int) {
     using S = decltype(info)::class_t;
     string_view parent = "<none>";
-    if constexpr (has_base_v<S>) {
-      parent = class_info_v<base_class_t<S>>.name;
+    if constexpr (has_base_class<S>()) {
+      parent = get_class_info<TrefBaseClass(S)>().name;
     }
 
     printf("==================\n");
@@ -327,9 +325,9 @@ void dumpDetails() {
     printf("--- members ---\n");
 
     int preLv = 0;
-    class_info_v<S>.each_member_r([&](auto info, int lv) {
+    get_class_info<S>().each_member_r([&](auto info, int lv) {
       if (lv != preLv) {
-        auto owner = class_info_v<decltype(info)::enclosing_class_t>.name;
+        auto owner = get_class_info<decltype(info)::enclosing_class_t>().name;
         printf("--- from %s ---\n", owner.data());
       }
       preLv = lv;
@@ -376,7 +374,7 @@ struct MetaExportedClass {
   template <typename T>
   static void dumpAll() {
     printf("===== All Exported Class ====\n");
-    class_info_v<T>.each_subclass_r([&](auto info, int) {
+    get_class_info<T>().each_subclass_r([&](auto info, int) {
       if constexpr (is_base_of_v<MetaExportedClass, decltype(info.meta)>) {
         printf("%s\n", info.name.data());
       }
@@ -462,7 +460,7 @@ void TestHookable() {
 
   // call validatable functions
   auto callValidatableFunc = [&](int arg) {
-    class_info_v<SubChild>.each_member_r([&](auto info, int) {
+    get_class_info<SubChild>().each_member_r([&](auto info, int) {
       using ValidateFunc = MetaValidatableFunc<SubChild, int>;
       if constexpr (std::is_base_of_v<ValidateFunc, decltype(info.meta)>) {
         auto v = info.value;
@@ -481,7 +479,7 @@ void TestHookable() {
   callValidatableFunc(100);
 
   // call hookable functions
-  class_info_v<SubChild>.each_member_r([&](auto info, int) {
+  get_class_info<SubChild>().each_member_r([&](auto info, int) {
     if constexpr (std::is_base_of_v<MetaHookableFunc, decltype(info.meta)>) {
       auto v = info.value;
       auto f = s.*v;
@@ -531,11 +529,11 @@ struct BindExternalData {
   TrefMember(money);
 };
 
-static_assert(tref::is_reflected_v<ExternalData>);
-static_assert(tref::has_base_v<ExternalData>);
-static_assert(is_same_v<tref::base_class_t<ExternalData>, SubChild>);
-static_assert(class_info_v<ExternalData>.meta.foo == 333);
-static_assert(class_info_v<ExternalData>.meta.bar == 444);
+static_assert(tref::is_reflected<ExternalData>());
+// static_assert(tref::has_base_class<ExternalData>());
+static_assert(is_same_v<TrefBaseClass(ExternalData), SubChild>);
+static_assert(get_class_info<ExternalData>().meta.foo == 333);
+static_assert(get_class_info<ExternalData>().meta.bar == 444);
 
 //////////////////////////////////////////////////////////////////////////
 // subclass system test
