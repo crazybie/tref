@@ -261,6 +261,32 @@ static_assert(enum_info<ExternalEnum>().name == "ExternalEnum");
 static_assert(enum_info<ExternalEnum>().size == sizeof(ExternalEnum));
 static_assert(enum_info<ExternalEnum>().items.size() == 2);
 
+// enum in template (both name and value contains comma)
+
+template <typename, typename>
+struct TestExternalTemplateInnerEnum {
+  enum class InnerEnum { ValX = 1, ValY = ValX + 10 };
+};
+
+// enum value is not necessary to external enum, here just for test.
+TrefEnumImp(
+    (TestExternalTemplateInnerEnum<int, int>::InnerEnum),
+    ValX = 1,
+    (ValY = (int)TestExternalTemplateInnerEnum<int, int>::InnerEnum::ValX +
+            10));
+static_assert(
+    enum_info<TestExternalTemplateInnerEnum<int, int>::InnerEnum>().name ==
+    "TestExternalTemplateInnerEnum<int, int>::InnerEnum");
+static_assert(enum_info<TestExternalTemplateInnerEnum<int, int>::InnerEnum>()
+                  .items.size() == 2);
+static_assert(
+    enum_to_string(TestExternalTemplateInnerEnum<int, int>::InnerEnum::ValX) ==
+    "ValX");
+static_assert(
+    string_to_enum("ValX",
+                   TestExternalTemplateInnerEnum<int, int>::InnerEnum::ValY) ==
+    TestExternalTemplateInnerEnum<int, int>::InnerEnum::ValX);
+
 // enum in class
 
 struct DataWithEnumMemType {
