@@ -28,9 +28,6 @@ static_assert(class_info<TypeA>().each_member([](auto info, int) {
   return info.name == "val" && is_same_v<enclosing_class_t<mem_t>, TypeA> &&
          is_same_v<member_t<mem_t>, decltype(TypeA{}.val)>;
 }));
-static_assert(class_info<TypeA>().each_member([](auto info, int lv) {
-  return lv == 0 && info.name == "val";
-}));
 static_assert(class_info<TypeA>().get_member_index("val") == 1);
 static_assert(class_info<TypeA>().get_member<1>().index == 1);
 static_assert(class_info<TypeA>().get_member<1>().name == "val");
@@ -42,6 +39,7 @@ static_assert(
 
 struct TypeB : TypeA {
   TrefType(TypeB);
+
   float foo;
   TrefMember(foo);
 };
@@ -241,12 +239,12 @@ static_assert(enum_info<EnumA>().meta.bar == 222);
 static_assert(enum_info<EnumA>().name == "EnumA");
 static_assert(enum_info<EnumA>().size == sizeof(EnumA));
 static_assert(enum_info<EnumA>().items.size() == 2);
-static_assert(enum_info<EnumA>().each_item([](auto name, auto val) {
-  switch (val) {
+static_assert(enum_info<EnumA>().each_item([](auto info) {
+  switch (info.value) {
     case EnumA::Ass:
-      return name == "Ass";
+      return info.name == "Ass";
     case EnumA::Ban:
-      return name == "Ban";
+      return info.name == "Ban";
     default:
       return false;
   }
@@ -302,11 +300,71 @@ static_assert(class_info<DataWithEnumMemType>().each_member_type([](auto info,
   return info.name == "EnumF";
 }));
 
+//////////////////////////////////
+// meta for enum values
+
+struct CustomEnumItem {
+  string_view desc;
+  string_view comment;
+  int otherMetaData = 0;
+};
+
+TrefEnumGlobal2(
+    EnumValueMetaTest,
+    (TestA, (CustomEnumItem{"Desc for A Test", "Comment for A Test", 11})),
+    (TestB, (CustomEnumItem{"Desc for B Test", "Comment for B Test", 22})));
+
+static_assert(enum_info<EnumValueMetaTest>().items[0].meta.desc ==
+              "Desc for A Test");
+static_assert(enum_info<EnumValueMetaTest>().items[0].meta.comment ==
+              "Comment for A Test");
+static_assert(enum_info<EnumValueMetaTest>().items[0].meta.otherMetaData == 11);
+
+static_assert(enum_info<EnumValueMetaTest>().items[1].meta.desc ==
+              "Desc for B Test");
+static_assert(enum_info<EnumValueMetaTest>().items[1].meta.comment ==
+              "Comment for B Test");
+static_assert(enum_info<EnumValueMetaTest>().items[1].meta.otherMetaData == 22);
+
+//////////////////////////////////
+// meta for values of enum in class
+
+struct TestInnerEnumValueWithMeta {
+  TrefEnum2(EnumValueWithMeta, (EnumA, "Enum A"), (EnumB, "Enum B"));
+
+  TrefEnum2(EnumValueWithMeta2,
+            (EnumA, (CustomEnumItem{"desc for a", "comment for a", 11})),
+            (EnumB, (CustomEnumItem{"desc for b", "comment for b", 22})));
+};
+
+static_assert(
+    enum_info<TestInnerEnumValueWithMeta::EnumValueWithMeta>().items[0].meta ==
+    "Enum A");
+static_assert(
+    enum_info<TestInnerEnumValueWithMeta::EnumValueWithMeta>().items[1].meta ==
+    "Enum B");
+
+static_assert(enum_info<TestInnerEnumValueWithMeta::EnumValueWithMeta2>()
+                  .items[0]
+                  .meta.desc == "desc for a");
+static_assert(enum_info<TestInnerEnumValueWithMeta::EnumValueWithMeta2>()
+                  .items[0]
+                  .meta.otherMetaData == 11);
+static_assert(enum_info<TestInnerEnumValueWithMeta::EnumValueWithMeta2>()
+                  .items[1]
+                  .meta.desc == "desc for b");
+static_assert(enum_info<TestInnerEnumValueWithMeta::EnumValueWithMeta2>()
+                  .items[1]
+                  .meta.otherMetaData == 22);
+
+//////////////////////////////////////////////////////////////////////////
+
 template <typename T>
 void DumpEnum() {
   printf("========= Enum Members of %s ======\n", enum_info<T>().name.data());
-  enum_info<T>().each_item([](auto name, auto val) {
-    printf("name: %.*s, val: %d\n", name.size(), name.data(), (int)val);
+  enum_info<T>().each_item([](auto info) {
+    printf("name: %.*s, val: %d\n", info.name.size(), info.name.data(),
+           (int)info.value);
     return true;
   });
   puts("==================");
