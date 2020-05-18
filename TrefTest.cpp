@@ -267,10 +267,10 @@ struct FakeEnumMeta {
   int bar;
 };
 
-TrefEnumGlobalWithMeta(EnumA,
-                       (FakeEnumMeta{111, 222}),
-                       Ass = 1,
-                       Ban = (int)EnumA::Ass * 3);
+TrefEnumWithMeta(EnumA,
+                 (FakeEnumMeta{111, 222}),
+                 Ass = 1,
+                 Ban = (int)EnumA::Ass * 3);
 
 static_assert(enum_to_string(EnumA::Ass) == "Ass");
 static_assert(string_to_enum("Ban", EnumA::Ass) == EnumA::Ban);
@@ -332,7 +332,7 @@ static_assert(
 struct DataWithEnumMemType {
   TrefType(DataWithEnumMemType);
 
-  TrefEnum(EnumF, ValA = 1, ValB = 12);
+  TrefMemberEnum(EnumF, ValA = 1, ValB = 12);
   TrefMemberType(EnumF);
 };
 
@@ -352,10 +352,11 @@ struct CustomEnumItem {
   int otherMetaData = 0;
 };
 
-TrefEnumGlobalEx(
-    EnumValueMetaTest,
-    (TestA, (CustomEnumItem{"Desc for A Test", "Comment for A Test", 11})),
-    (TestB, (CustomEnumItem{"Desc for B Test", "Comment for B Test", 22})));
+TrefEnumEx(EnumValueMetaTest,
+           (TestA,
+            (CustomEnumItem{"Desc for A Test", "Comment for A Test", 11})),
+           (TestB,
+            (CustomEnumItem{"Desc for B Test", "Comment for B Test", 22})));
 
 static_assert(enum_info<EnumValueMetaTest>().items[0].meta.desc ==
               "Desc for A Test");
@@ -373,11 +374,12 @@ static_assert(enum_info<EnumValueMetaTest>().items[1].meta.otherMetaData == 22);
 // meta for values of enum in class
 
 struct TestInnerEnumValueWithMeta {
-  TrefEnumEx(EnumValueWithMeta, (EnumA, "Enum A"), (EnumB, "Enum B"));
+  TrefMemberEnumEx(EnumValueWithMeta, (EnumA, "Enum A"), (EnumB, "Enum B"));
 
-  TrefEnumEx(EnumValueWithMeta2,
-             (EnumA, (CustomEnumItem{"desc for a", "comment for a", 11})),
-             (EnumB, (CustomEnumItem{"desc for b", "comment for b", 22})));
+  TrefMemberEnumEx(EnumValueWithMeta2,
+                   (EnumA, (CustomEnumItem{"desc for a", "comment for a", 11})),
+                   (EnumB,
+                    (CustomEnumItem{"desc for b", "comment for b", 22})));
 };
 
 static_assert(
@@ -674,6 +676,7 @@ struct ExternalData : SubChild {
 
 struct BindExternalData {
   TrefExternalSubTypeWithMeta(ExternalData, SubChild, (FakeMeta{333, 444}));
+  
   TrefField(age);
   TrefField(age2);
   TrefField(money);
