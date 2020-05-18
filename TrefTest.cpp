@@ -17,22 +17,22 @@ struct TypeA {
   TrefType(TypeA);
 
   int val;
-  TrefMember(val);
+  TrefField(val);
 };
 
 static_assert(is_reflected<TypeA>());
 static_assert(class_info<TypeA>().name == "TypeA");
 static_assert(class_info<TypeA>().size == sizeof(TypeA));
-static_assert(class_info<TypeA>().each_member([](auto info, int) {
+static_assert(class_info<TypeA>().each_field([](auto info, int) {
   using mem_t = decltype(info.value);
   return info.name == "val" && is_same_v<enclosing_class_t<mem_t>, TypeA> &&
          is_same_v<member_t<mem_t>, decltype(TypeA{}.val)>;
 }));
-static_assert(class_info<TypeA>().get_member_index("val") == 1);
-static_assert(class_info<TypeA>().get_member<1>().index == 1);
-static_assert(class_info<TypeA>().get_member<1>().name == "val");
+static_assert(class_info<TypeA>().get_field_index("val") == 1);
+static_assert(class_info<TypeA>().get_field<1>().index == 1);
+static_assert(class_info<TypeA>().get_field<1>().name == "val");
 static_assert(
-    is_same_v<decltype(class_info<TypeA>().get_member<1>())::member_t, int>);
+    is_same_v<decltype(class_info<TypeA>().get_field<1>())::member_t, int>);
 
 //////////////////////////////
 // subclass
@@ -41,13 +41,13 @@ struct TypeB : TypeA {
   TrefType(TypeB);
 
   float foo;
-  TrefMember(foo);
+  TrefField(foo);
 };
 
 static_assert(has_base_class<TypeB>());
 static_assert(is_same_v<TrefBaseClass(TypeB), TypeA>);
 static_assert(is_same_v<decltype(class_info<TypeB>())::base_t, TypeA>);
-static_assert(class_info<TypeB>().each_member([](auto info, int level) {
+static_assert(class_info<TypeB>().each_field([](auto info, int level) {
   // exclude members of base class
   if (level != 0)
     return true;
@@ -56,7 +56,7 @@ static_assert(class_info<TypeB>().each_member([](auto info, int level) {
   return info.name == "foo" && is_same_v<enclosing_class_t<mem_t>, TypeB> &&
          is_same_v<member_t<mem_t>, decltype(TypeB{}.foo)>;
 }));
-static_assert(class_info<TypeB>().each_member([](auto info, int lv) {
+static_assert(class_info<TypeB>().each_field([](auto info, int lv) {
   if (lv == 0)
     return info.name == "foo";
   return lv == 1 && info.name == "val";
@@ -70,11 +70,11 @@ struct TempType : TypeB {
   TrefType(TempType);
 
   T tempVal;
-  TrefMember(tempVal);
+  TrefField(tempVal);
 };
 
 static_assert(class_info<TempType<int>>().name == "TempType");
-static_assert(class_info<TempType<int>>().each_member([](auto info, int lv) {
+static_assert(class_info<TempType<int>>().each_field([](auto info, int lv) {
   // exclude members of base class.
   if (lv != 0)
     return true;
@@ -124,20 +124,19 @@ struct ReflectedTemplate {
   TrefType(ReflectedTemplate);
 
   A a;
-  TrefMember(a);
+  TrefField(a);
 };
 
 struct UsingTemplateIntance {
   TrefType(UsingTemplateIntance);
 
   ReflectedTemplate<int, float> a;
-  TrefMember(a);
+  TrefField(a);
 };
 
 static_assert(class_info<decltype(UsingTemplateIntance{}.a)>().name ==
               "ReflectedTemplate");
-static_assert(class_info<UsingTemplateIntance>().each_member([](auto info,
-                                                                int) {
+static_assert(class_info<UsingTemplateIntance>().each_field([](auto info, int) {
   using MT = decltype(info)::member_t;
   return class_info<MT>().name == "ReflectedTemplate";
 }));
@@ -148,13 +147,13 @@ struct TestIsMember {
   TrefType(TestIsMember);
 
   static constexpr auto staticVal = 0;
-  TrefMember(staticVal);
+  TrefField(staticVal);
 
   int memberVal;
-  TrefMember(memberVal);
+  TrefField(memberVal);
 };
 
-static_assert(class_info<TestIsMember>().each_member([](auto info, int) {
+static_assert(class_info<TestIsMember>().each_field([](auto info, int) {
   if (info.name == "staticVal")
     return !info.is_member_v;
   if (info.name == "memberVal")
@@ -174,8 +173,7 @@ struct TestMultipleArgsToMacro {
   template <typename A, typename B>
   static constexpr auto MultiArgsVar_v = A(0) + B(1);
 
-  TrefMemberWithMeta((MultiArgsVar_v<int, int>),
-                     (MetaMultiArgs<float, char>{}));
+  TrefFieldWithMeta((MultiArgsVar_v<int, int>), (MetaMultiArgs<float, char>{}));
 
   template <typename, typename, typename>
   struct T {};
@@ -194,7 +192,7 @@ struct TestInnerTemplate {
     TrefType(InnerTemplate);
 
     int a;
-    TrefMember(a);
+    TrefField(a);
   };
 
   TrefMemberType(InnerTemplate<int>);
@@ -203,7 +201,7 @@ struct TestInnerTemplate {
 static_assert(class_info<TestInnerTemplate::InnerTemplate<int>>().name ==
               "InnerTemplate");
 
-static_assert(class_info<TestInnerTemplate::InnerTemplate<int>>().each_member(
+static_assert(class_info<TestInnerTemplate::InnerTemplate<int>>().each_field(
     [](auto info, int) {
       static_assert(is_same_v<decltype(info)::member_t, int>);
       return info.name == "a";
@@ -232,12 +230,12 @@ struct OverloadingTest {
   void foo(float);
   void foo(char*, int);
 
-  TrefMember(foo, (int));
-  TrefMemberWithMeta(foo, (float), (Meta<1, 2>{}));
-  TrefMember(foo, (char*, int));
+  TrefField(foo, (int));
+  TrefFieldWithMeta(foo, (float), (Meta<1, 2>{}));
+  TrefField(foo, (char*, int));
 };
 
-static_assert(class_info<OverloadingTest>().each_member([](auto info, int) {
+static_assert(class_info<OverloadingTest>().each_field([](auto info, int) {
   if (info.name != "foo")
     return false;
   if constexpr (is_same_v<decltype(info.value),
@@ -452,9 +450,9 @@ void dumpDetails() {
   printf("==== subclass details of %s ====\n", clsInfo.name.data());
 
   constexpr auto memName = "baseVal";
-  constexpr auto index = clsInfo.get_member_index(memName);
+  constexpr auto index = clsInfo.get_field_index(memName);
   printf("index of %s: %d\n", memName,
-         index > 0 ? clsInfo.get_member<index>().index : index);
+         index > 0 ? clsInfo.get_field<index>().index : index);
 
   clsInfo.each_subclass([](auto info, int) {
     using S = decltype(info)::class_t;
@@ -469,7 +467,7 @@ void dumpDetails() {
     printf("--- members ---\n");
 
     int preLv = 0;
-    class_info<S>().each_member([&](auto info, int lv) {
+    class_info<S>().each_field([&](auto info, int lv) {
       if (lv != preLv) {
         auto owner = class_info<decltype(info)::enclosing_class_t>().name;
         printf("--- from %s ---\n", owner.data());
@@ -546,7 +544,7 @@ struct Base {
   TrefRootType(Base);
 
   int baseVal;
-  TrefMember(baseVal);
+  TrefField(baseVal);
 };
 
 template <typename T>
@@ -554,28 +552,28 @@ struct Data : Base {
   TrefSubType(Data);
 
   T t;
-  TrefMemberWithMeta(t, Meta{"test"});
+  TrefFieldWithMeta(t, Meta{"test"});
 
   int x, y;
-  TrefMemberWithMeta(x, (MetaNumber{"pos x", 1, 100}));
-  TrefMemberWithMeta(y, (MetaNumber{"pos y", 1, 100}));
+  TrefFieldWithMeta(x, (MetaNumber{"pos x", 1, 100}));
+  TrefFieldWithMeta(y, (MetaNumber{"pos y", 1, 100}));
 
   std::string name{"boo"};
-  TrefMemberWithMeta(name, Meta{"entity name"});
+  TrefFieldWithMeta(name, Meta{"entity name"});
 };
 
 struct Child : Data<int> {
   TrefSubType(Child);
 
   float z;
-  TrefMember(z);
+  TrefField(z);
 };
 
 struct Child2 : Data<float> {
   TrefSubType(Child2);
 
   float zz;
-  TrefMember(zz);
+  TrefField(zz);
 };
 
 struct SubChild : Child2 {
@@ -584,7 +582,7 @@ struct SubChild : Child2 {
   int subVal = 99;
 
   const char* ff = "subchild";
-  TrefMember(ff);
+  TrefField(ff);
 
   void func(int a) {
     printf("func called with arg:%d, subVal:%d\n", a, subVal);
@@ -593,13 +591,13 @@ struct SubChild : Child2 {
     printf("check if arg > 0: arg=%d", a);
     return a > 0;
   }
-  TrefMemberWithMeta(func, MetaValidatableFunc{func_validate});
+  TrefFieldWithMeta(func, MetaValidatableFunc{func_validate});
 
   function<void(self_t&, int)> hookableFunc = [](self_t& self, int a) {
     printf("hookable func called with arg: %d, str:%s, subVal:%d\n", a, self.ff,
            self.subVal);
   };
-  TrefMemberWithMeta(hookableFunc, MetaHookableFunc{});
+  TrefFieldWithMeta(hookableFunc, MetaHookableFunc{});
 };
 
 void TestHookable() {
@@ -608,7 +606,7 @@ void TestHookable() {
 
   // call validatable functions
   auto callValidatableFunc = [&](int arg) {
-    class_info<SubChild>().each_member([&](auto info, int) {
+    class_info<SubChild>().each_field([&](auto info, int) {
       using ValidateFunc = MetaValidatableFunc<SubChild, int>;
       if constexpr (std::is_base_of_v<ValidateFunc, decltype(info.meta)>) {
         auto v = info.value;
@@ -627,7 +625,7 @@ void TestHookable() {
   callValidatableFunc(100);
 
   // call hookable functions
-  class_info<SubChild>().each_member([&](auto info, int) {
+  class_info<SubChild>().each_field([&](auto info, int) {
     if constexpr (std::is_base_of_v<MetaHookableFunc, decltype(info.meta)>) {
       auto v = info.value;
       auto f = s.*v;
@@ -645,8 +643,9 @@ void TestHookable() {
 template <typename T>
 struct TempSubChild : SubChild {
   TrefSubType(TempSubChild);
+
   T newVal;
-  TrefMember(newVal);
+  TrefField(newVal);
 };
 
 struct SubChildOfTempSubChild1 : TempSubChild<int> {
@@ -672,9 +671,9 @@ struct ExternalData : SubChild {
 
 struct BindExternalData {
   TrefExternalSubTypeWithMeta(ExternalData, SubChild, (FakeMeta{333, 444}));
-  TrefMember(age);
-  TrefMember(age2);
-  TrefMember(money);
+  TrefField(age);
+  TrefField(age2);
+  TrefField(money);
 };
 
 static_assert(tref::is_reflected<ExternalData>());
