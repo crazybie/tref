@@ -351,7 +351,7 @@ struct CustomEnumItem {
   int otherMetaData = 0;
 };
 
-TrefEnumGlobal2(
+TrefEnumGlobalEx(
     EnumValueMetaTest,
     (TestA, (CustomEnumItem{"Desc for A Test", "Comment for A Test", 11})),
     (TestB, (CustomEnumItem{"Desc for B Test", "Comment for B Test", 22})));
@@ -372,11 +372,11 @@ static_assert(enum_info<EnumValueMetaTest>().items[1].meta.otherMetaData == 22);
 // meta for values of enum in class
 
 struct TestInnerEnumValueWithMeta {
-  TrefEnum2(EnumValueWithMeta, (EnumA, "Enum A"), (EnumB, "Enum B"));
+  TrefEnumEx(EnumValueWithMeta, (EnumA, "Enum A"), (EnumB, "Enum B"));
 
-  TrefEnum2(EnumValueWithMeta2,
-            (EnumA, (CustomEnumItem{"desc for a", "comment for a", 11})),
-            (EnumB, (CustomEnumItem{"desc for b", "comment for b", 22})));
+  TrefEnumEx(EnumValueWithMeta2,
+             (EnumA, (CustomEnumItem{"desc for a", "comment for a", 11})),
+             (EnumB, (CustomEnumItem{"desc for b", "comment for b", 22})));
 };
 
 static_assert(
