@@ -230,8 +230,11 @@ struct OverloadingTest {
   void foo(float);
   void foo(char*, int);
 
-  TrefField(foo, (int));
+  // Can omit the paren for function with only one argument.
+  TrefField(foo, int);  // equals to TreField(foo, (int))
+
   TrefFieldWithMeta(foo, (float), (Meta<1, 2>{}));
+
   TrefField(foo, (char*, int));
 };
 
