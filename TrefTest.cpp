@@ -68,6 +68,7 @@ static_assert(class_info<TypeB>().each_member([](auto info, int lv) {
 template <typename T>
 struct TempType : TypeB {
   TrefType(TempType);
+
   T tempVal;
   TrefMember(tempVal);
 };
@@ -232,6 +233,7 @@ TrefEnumGlobalWithMeta(EnumA,
                        (FakeEnumMeta{111, 222}),
                        Ass = 1,
                        Ban = (int)EnumA::Ass * 3);
+
 static_assert(enum_to_string(EnumA::Ass) == "Ass");
 static_assert(string_to_enum("Ban", EnumA::Ass) == EnumA::Ban);
 static_assert(enum_info<EnumA>().meta.foo == 111);
@@ -253,6 +255,7 @@ static_assert(enum_info<EnumA>().each_item([](auto info) {
 // external enum
 
 enum class ExternalEnum { Value1 = 1, Value2 = Value1 + 4 };
+
 TrefEnumImp(ExternalEnum, Value1, Value2);
 
 static_assert(enum_info<ExternalEnum>().name == "ExternalEnum");
@@ -272,6 +275,7 @@ TrefEnumImp(
     ValX = 1,
     (ValY = (int)TestExternalTemplateInnerEnum<int, int>::InnerEnum::ValX +
             10));
+
 static_assert(
     enum_info<TestExternalTemplateInnerEnum<int, int>::InnerEnum>().name ==
     "TestExternalTemplateInnerEnum<int, int>::InnerEnum");
@@ -293,6 +297,7 @@ struct DataWithEnumMemType {
   TrefEnum(EnumF, ValA = 1, ValB = 12);
   TrefMemberType(EnumF);
 };
+
 static_assert(class_info<DataWithEnumMemType>().each_member_type([](auto info,
                                                                     int) {
   using T = decltype(info.value)::type;
@@ -636,7 +641,7 @@ struct BindExternalData {
 };
 
 static_assert(tref::is_reflected<ExternalData>());
-// static_assert(tref::has_base_class<ExternalData>());
+static_assert(tref::has_base_class<ExternalData>());
 static_assert(is_same_v<TrefBaseClass(ExternalData), SubChild>);
 static_assert(class_info<ExternalData>().meta.foo == 333);
 static_assert(class_info<ExternalData>().meta.bar == 444);
