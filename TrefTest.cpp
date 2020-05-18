@@ -460,7 +460,7 @@ void dumpDetails() {
          index > 0 ? clsInfo.get_field<index>().index : index);
 
   clsInfo.each_subclass([](auto info, int) {
-    using S = decltype(info)::class_t;
+    using S = typename decltype(info)::class_t;
     string_view parent = "<none>";
     if constexpr (has_base_class<S>()) {
       parent = class_info<TrefBaseClass(S)>().name;
@@ -676,7 +676,7 @@ struct ExternalData : SubChild {
 
 struct BindExternalData {
   TrefExternalSubTypeWithMeta(ExternalData, SubChild, (FakeMeta{333, 444}));
-  
+
   TrefField(age);
   TrefField(age2);
   TrefField(money);
