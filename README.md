@@ -15,8 +15,8 @@ What I need is a reflection system that:
 - Must support custom meta data for most types of the reflected elements. (all others are weak at supporting this)
     - The ORM system of the server need meta for database related stuff like primary key, etc.
     - The game engine can choose parts of its API to be exported to the other system (e.g. the script engine) by specify some special tags.
-- Must support enum with custom values. (some library support this by with complex syntax)
-    - Can garentee every enum value to be started from zero and increased by one.
+- Must support enum with custom values. (some library support this but with complex syntax)
+    - No one can garentee all enum are started from zero and increased by one.
 - Better to support meta for enum items. (allmost none support this)
     - Error codes defined as enum can have localization info attacked for translation.
     - You can even attach function to the meta of enum item for data-driven like static-dispathing pattern.
