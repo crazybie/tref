@@ -1,6 +1,6 @@
 # Tref: A *T*iny compile time *ref*lection system.
 
-## Features:
+## Features
 - Only utilize C++17 language features, no external preprocessor needed.
 - Reflect at compile time with minimal runtime overhead.
 - Simple syntax.
@@ -14,13 +14,17 @@
 - Reflect overloaded functions.
 - Factory pattern: introspect all sub-classes from one base class.
 
-## TODO:
+## TODO
 - Reflect function details, e.g. arguments and return type.
 - Specify a new name for reflected element.
 
 ## Examples
 
 - See TrefTest.cpp.
+
+## Thanks
+- https://woboq.com/blog/verdigris-implementation-tricks.html
+- https://www.codeproject.com/Articles/1002895/Clean-Reflective-Enums-Cplusplus-Enum-to-String-wi
 
 ## License
 
