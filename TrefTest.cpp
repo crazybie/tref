@@ -1,8 +1,8 @@
+#include "tref.h"
+
 #include <functional>
 #include <iostream>
 #include <sstream>
-
-#include "tref.h"
 
 using namespace std;
 using namespace tref;
