@@ -2,7 +2,7 @@
 
 ## Motivation
 I am a C++ game developer, I have been hunting for a easy to use reflection library for a long time, but none of them make me happy completely. 
-What I need is a reflection system than:
+What I need is a reflection system that:
 
 - Reflect the field name. (magic_get excluded)
     - Needed by json reader & writer.
