@@ -219,6 +219,43 @@ static_assert(class_info<TestInnerTemplate>().each_member_type([](auto info,
   return info.name == "InnerTemplate<int>";
 }));
 
+//////////////////////////////////
+// function overloading
+
+struct OverloadingTest {
+  TrefType(OverloadingTest);
+
+  template <int, int>
+  struct Meta {};
+
+  void foo(int);
+  void foo(float);
+  void foo(char*, int);
+
+  TrefMember(foo, (int));
+  TrefMemberWithMeta(foo, (float), (Meta<1, 2>{}));
+  TrefMember(foo, (char*, int));
+};
+
+static_assert(class_info<OverloadingTest>().each_member([](auto info, int) {
+  if (info.name != "foo")
+    return false;
+  if constexpr (is_same_v<decltype(info.value),
+                          void (OverloadingTest::*)(int)>) {
+    return info.value == overload_v<int>(&OverloadingTest::foo);
+
+  } else if constexpr (is_same_v<decltype(info.value),
+                                 void (OverloadingTest::*)(float)>) {
+    static_assert(is_same_v<decltype(info.meta), OverloadingTest::Meta<1, 2>>);
+    return info.value == overload_v<float>(&OverloadingTest::foo);
+
+  } else if constexpr (is_same_v<decltype(info.value),
+                                 void (OverloadingTest::*)(char*, int)>) {
+    return info.value == overload_v<char*, int>(&OverloadingTest::foo);
+  }
+  return false;
+}));
+
 //////////////////////////////////////////////////////////////////////////
 // enum test
 
