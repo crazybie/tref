@@ -689,7 +689,7 @@ static_assert(class_info<ExternalData>().meta.bar == 444);
 // subclass system test
 
 // Test the subclass system behind all the definition of subclasses,
-// Please see the `NOTE` of the each_subclass function.
+// Please see the `NOTE` of the each_subclass_r function.
 static_assert(hasSubclass<Base>("SubChild"));
 static_assert(hasSubclass<Base>("TempSubChild"));
 static_assert(hasSubclass<Base>("SubChildOfTempSubChild1"));
