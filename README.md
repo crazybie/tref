@@ -35,6 +35,7 @@ What I need is a reflection system that:
 ## Features
 - Simpler syntax than other reflection libraries.
 - Only utilize C++17 language features, no external preprocessor tools needed.
+- Super lightweight: only one small header file with no extra dependencies except STL.
 - Reflect at compile time with minimal runtime overhead.
 - Normal class and class template reflection with unified syntax.
 - Reflect elements with additional meta-data.
@@ -54,7 +55,7 @@ What I need is a reflection system that:
 
 - See TrefTest.cpp.
 
-## Thanks
+## Thanks To
 - https://woboq.com/blog/verdigris-implementation-tricks.html
 - https://www.codeproject.com/Articles/1002895/Clean-Reflective-Enums-Cplusplus-Enum-to-String-wi
 
