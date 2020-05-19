@@ -1,9 +1,12 @@
 # Tref: A *T*iny compile time *ref*lection system.
 
 ## Motivation
-I am a C++ game developer, I have been hunting for an easy to use reflection library for a long time, but none of them make me happy completely. 
+I am a C++ game developer, I have been hunting for a powerful and easy to use reflection library for a long time, but none of them make me happy completely. 
 What I need is a reflection system that:
 
+- Must be efficient for performance critical scenarios.
+    - Must not be as slow as the implementation of C# or Java or Golang.
+    - Should utilize the powerful compiling-time-executing feature of C++.
 - Reflect the field name. (magic_get excluded)
     - Needed by JSON reader & writer.
 - Reflect subclass to support factory pattern. (none have direct support)
@@ -12,11 +15,13 @@ What I need is a reflection system that:
 - Should have simple syntax for both normal class and class template. (almost all are weak at supporting class template or with complex syntax)    
     - The RPC system of the server may have a huge number of types of data to transmit, we need an elegant solution to make things easier.    
     - The RPC system can utilize the reflection info to encode the data into a more efficient format.
+    - Good template-support is a bonus for better code-reuse.
 - Must support custom meta-data for most types of reflected elements. (all others are weak at supporting this)
-    - The ORM system of the server needs meta for database related stuff like primary key, etc.
-    - The game engine can choose parts of its API to be exported to the other system (e.g. the script engine) by specifying some special tags.
+    - The ORM system of the server needs meta for database related attributes like primary key, unique keys, etc.
+    - The game engine can export part of its API to other system (e.g. the script engine) by specifying tags.
+    - Allow better visual-editing for the exported game structures in the engine editor.
 - Must support enum with custom values. (some library support this but with complex syntax)
-    - No one can guarantee all enum are started from zero and increased by one.
+    - No one can guarantee all enums are started from zero and increased by one.
 - Better to support meta for enum items. (almost none support this)
     - Error codes defined as enum can have localization info attacked for translation.
     - You can even attach a function to the meta of enum item for data-driven like static-dispatching pattern.
@@ -26,7 +31,6 @@ What I need is a reflection system that:
     - A large project definitely integrates many 3rd libraries, keeps the wrapper layer thin and small and programmers will thank you so much.
 - Should not brings in code bloat and slow down the compiling too much. 
     - As a basic facility, this is very important.
-
 
 ## Features
 - Simpler syntax than other reflection libraries.
