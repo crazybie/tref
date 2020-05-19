@@ -30,14 +30,13 @@ What I need is a reflection system that:
 - Easily support reflecting 3rd-party code. (Other libraries are weak at supporting this)
     - A large project definitely integrates many 3rd libraries, keeps the wrapper layer thin and small and programmers will thank you so much.
 - Should not brings in code bloat and slow down the compiling too much. 
-    - As a basic facility, this is very important.
+    - This is very important to a basic facility.
 
 ## Features
 - Simpler syntax than other reflection libraries.
-- Only utilize C++17 language features, no external preprocessor needed.
+- Only utilize C++17 language features, no external preprocessor tools needed.
 - Reflect at compile time with minimal runtime overhead.
-- Normal class reflection.
-- Class template reflection with unified syntax.
+- Normal class and class template reflection with unified syntax.
 - Reflect elements with additional meta-data.
 - Enum class reflection, support user-defined value, and meta for each item.
 - Reflect external types of third-party code with unified syntax.
