@@ -402,6 +402,25 @@ static_assert(enum_info<TestInnerEnumValueWithMeta::EnumValueWithMeta2>()
                   .items[1]
                   .meta.otherMetaData == 22);
 
+//////////////////////////////////
+// static dispatching sample.
+
+enum class TestEnumStaticDispatching;
+constexpr auto processA(TestEnumStaticDispatching v) {
+  return 111;
+}
+constexpr auto processB(TestEnumStaticDispatching v) {
+  return 222;
+}
+
+TrefEnumEx(TestEnumStaticDispatching, (EnumA, &processA), (EnumB, &processB));
+
+static_assert([] {
+  constexpr auto c = TestEnumStaticDispatching::EnumA;
+  constexpr auto idx = enum_info<TestEnumStaticDispatching>().index_of_value(c);
+  return enum_info<TestEnumStaticDispatching>().items[idx].meta(c) == 111;
+}());
+
 //////////////////////////////////////////////////////////////////////////
 
 template <typename T>

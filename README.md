@@ -40,7 +40,7 @@ What I need is a reflection system that:
 - Reflect elements with additional meta-data.
 - Enum class reflection, support user-defined value, and meta for each item.
 - Reflect external types of third-party code with unified syntax.
-- Reflect class level and instance-level variables and functions.
+- Reflect class-level and instance-level variables and functions.
 - Reflect nested member types.
 - Reflect overloaded functions.
 - Factory pattern support: introspect all sub-classes from one base class.
