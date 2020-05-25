@@ -31,6 +31,16 @@ What I need is a reflection system that:
     - A large project definitely integrates many 3rd libraries, keeps the wrapper layer thin and small and programmers will thank you so much.
 - Should not brings in code bloat and slow down the compiling too much. 
     - This is very important to a basic facility.
+    
+So for summary, systems and design that are already known to strongly benefit from reflection are:
+- Factory pattern.
+- Data-driven design.
+- Serialization system.
+- RPC system.
+- ORM system.
+- Scripting system.
+- Visual-Editing authoring tools.
+and more.
 
 ## Features
 - Simpler syntax than other reflection libraries.
