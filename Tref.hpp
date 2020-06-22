@@ -604,7 +604,7 @@ struct EnumInfo {
       }
       i++;
     }
-    return pos;
+    return npos;
   }
 };
 
