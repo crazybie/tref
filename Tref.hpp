@@ -452,7 +452,7 @@ struct get_parent<T, void_t<decltype((typename T::__parent_t*)0)>> {
                            meta})
 
 #define _TrefSubType(T)                                   \
-  _TrefStatePush(typename tref::imp::get_parent<T>::type, \
+  _TrefStatePush(typename tref::imp::get_parent<_TrefRemoveParen(T)>::type, \
                  tref::imp::SubclassTag, tref::imp::Type<T>{})
 
 // Just reflect the type.
@@ -460,7 +460,7 @@ struct get_parent<T, void_t<decltype((typename T::__parent_t*)0)>> {
 #define _TrefType(T) _TrefTypeWithMeta(T, nullptr)
 #define _TrefTypeWithMeta(T, meta)                          \
  private:                                                   \
-  using __base_t = typename tref::imp::get_parent<T>::type; \
+  using __base_t = typename tref::imp::get_parent<_TrefRemoveParen(T)::type; \
   _TrefTypeCommon(T, __base_t, meta);
 
 // reflect member variable & function
