@@ -73,7 +73,7 @@ and more.
 ## Examples
 
 - simple class
-```
+```c++
 struct TypeA {
   TrefType(TypeA);
 
@@ -98,7 +98,7 @@ static_assert(
 ```
 
 - subclass
-```
+```c++
 
 struct TypeB : TypeA {
   TrefType(TypeB);
@@ -122,7 +122,7 @@ static_assert(class_info<TypeB>().each_field([](auto info, int level) {
 ```
 
 - template subclass
-```
+```c++
 template <typename T>
 struct TempType : TypeB {
   TrefType(TempType);
@@ -144,7 +144,7 @@ static_assert(class_info<TempType<int>>().each_field([](auto info, int lv) {
 ```
 
 - class meta
-```
+```c++
 struct FakeMeta {
   int foo;
   float bar;
@@ -163,7 +163,7 @@ static_assert(class_info<ClassWithMeta>().meta.bar == 22);
 ```
 
 - function overloading
-```
+```c++
 struct OverloadingTest {
   TrefType(OverloadingTest);
 
@@ -203,7 +203,7 @@ static_assert(class_info<OverloadingTest>().each_field([](auto info, int) {
 ```
 
 - global enum
-```
+```c++
 struct FakeEnumMeta {
   int foo;
   int bar;
@@ -234,7 +234,7 @@ static_assert(enum_info<EnumA>().each_item([](auto info) {
 ```
 
 - external enum
-```
+```c++
 enum class ExternalEnum { Value1 = 1, Value2 = Value1 + 4 };
 
 TrefExternalEnum(ExternalEnum, Value1, Value2);
@@ -245,7 +245,7 @@ static_assert(enum_info<ExternalEnum>().items.size() == 2);
 ```
 
 - meta for enum values
-```
+```c++
 struct CustomEnumItem {
   string_view desc;
   string_view comment;
@@ -272,7 +272,7 @@ static_assert(enum_info<EnumValueMetaTest>().items[1].meta.otherMetaData == 22);
 ```
 
 - static dispatching sample.
-```
+```c++
 enum class TestEnumStaticDispatching;
 constexpr auto processA(TestEnumStaticDispatching v) {
   return 111;
@@ -291,7 +291,7 @@ static_assert([] {
 ```
 
 - factory pattern
-```
+```c++
 
 struct Base {
   TrefType(Base);
@@ -353,8 +353,41 @@ void dumpTree() {
   });
   puts("============");
 }
+```
 
-// deserialize from file
+- deserialize from file
+```c++
+
+template <typename T,
+          typename = std::enable_if_t<tref::is_reflected_v<T>, bool>>
+bool operator>>(JsonReader& r, T& d) {
+  if (!r.expectObjStart())
+    return false;
+
+  for (std::string key; !r.expectObjEnd();) {
+    if (!r.expectObjKey(key))
+      return false;
+
+    auto loaded = false;
+    tref::class_info<T>().each_field([&](auto info, int) {
+      if (info.name == key) {
+        auto ptr = info.value;
+        if (r >> d.*ptr) {
+          loaded = true;
+        } else {
+          r.onInvalidValue(key.c_str());
+        }
+        return false;
+      }
+      return true;
+    });
+    if (!loaded) {
+      r.onInvalidValue(key.c_str());
+      return false;
+    }
+  }
+  return true;
+}
 
 template <typename T>
 bool operator>>(JsonReader& in, std::unique_ptr<T>& p) {
