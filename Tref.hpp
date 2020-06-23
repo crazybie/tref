@@ -248,9 +248,12 @@ tuple<Id<invalid_index>> _tref_state(C**, Tag, Id<0> id);
                        decltype(_tref_state((_TrefRemoveParen(C)**)0, Tag{}, \
                                             tref::imp::Id<>{}))>::value
 
-#define _TrefStatePush(C, Tag, ...)                                            \
-  friend constexpr auto _tref_state(                                           \
-      _TrefRemoveParen(C)**, Tag, tref::imp::Id<_TrefStateCnt(C, Tag) + 1> id) \
+#define _TrefStatePush(C, Tag, ...) \
+  friend _TrefStatePushImp(C, Tag, __VA_ARGS__)
+
+#define _TrefStatePushImp(C, Tag, ...)                                    \
+  constexpr auto _tref_state(_TrefRemoveParen(C)**, Tag,                  \
+                             tref::imp::Id<_TrefStateCnt(C, Tag) + 1> id) \
       _TrefReturn(std::tuple(id, __VA_ARGS__))
 
 template <class C, class Tag, int idx>
@@ -284,11 +287,9 @@ struct SubclassTag {};
 
 void _tref_class_info(void*);
 
-// Use function to delay the evaluation.
 template <typename T>
-constexpr auto is_reflected() {
-  return !std::is_same_v<decltype(_tref_class_info((T**)0)), void>;
-};
+constexpr auto is_reflected_v =
+    !std::is_same_v<decltype(_tref_class_info((T**)0)), void>;
 
 // Use function to delay the evaluation.
 template <typename T>
@@ -296,18 +297,13 @@ constexpr auto class_info() {
   return _tref_class_info((T**)0);
 };
 
-// Use macro to delay the evaluation.
-#define _TrefBaseClass(T) \
-  typename decltype(tref::class_info<_TrefRemoveParen(T)>())::base_t
-
-// Use function to delay the evaluation.
 template <typename T>
-constexpr auto has_base_class() {
-  if constexpr (is_reflected<T>()) {
-    return !std::is_same_v<_TrefBaseClass(T), DummyBase>;
-  }
-  return false;
-};
+using base_of_t =
+    typename decltype(tref::class_info<_TrefRemoveParen(T)>())::base_t;
+
+template <typename T>
+constexpr auto has_base_class_v =
+    is_reflected_v<T> ? !std::is_same_v<base_of_t<T>, DummyBase> : false;
 
 // Meta for Member
 
@@ -352,7 +348,8 @@ struct ClassInfo {
 
   template <typename Tag, typename F>
   constexpr bool each_r(F&& f, int level = 0) const {
-    auto next = each_state<T, Tag>([&](auto& info) { return f(info, level); });
+    auto next =
+        each_state<T, Tag>([&](const auto& info) { return f(info, level); });
     if (next)
       if constexpr (!is_same_v<Base, DummyBase>)
         return class_info<Base>().each_r<Tag>(f, level + 1);
@@ -368,7 +365,7 @@ struct ClassInfo {
     return each_r<FieldTag>(f);
   }
 
-  constexpr int get_field_index(string_view name) {
+  constexpr int get_field_index(string_view name) const {
     int idx = invalid_index;
     each_field([&](auto info, int) {
       if (info.name == name) {
@@ -381,7 +378,7 @@ struct ClassInfo {
   }
 
   template <int index>
-  constexpr auto get_field() {
+  constexpr auto get_field() const {
     return get<1>(get_state<T, FieldTag, index>());
   }
 
@@ -447,22 +444,10 @@ struct get_parent<T, void_t<decltype((typename T::__parent_t*)0)>> {
       tref::imp::FieldInfo{id.value, _TrefStringify(_TrefRemoveParen(T)), val, \
                            meta})
 
-#define _TrefPushSubclass(base) \
-  _TrefStatePush(base, tref::imp::SubclassTag, tref::imp::Type<self_t>{})
+#define _TrefSubType(T)                                                        \
+  _TrefStatePushImp(typename tref::imp::get_parent<_TrefRemoveParen(T)>::type, \
+                    tref::imp::SubclassTag, tref::imp::Type<T>{})
 
-//////////////////////////
-// Reflect the type and register it into a hierarchy tree.
-// NOTE: the entire tree should be in same namespace.
-//////////////////////////
-
-#define _TrefRootType(T) _TrefRootTypeWithMeta(T, nullptr)
-#define _TrefRootTypeWithMeta(T, meta) \
-  _TrefTypeCommon(T, tref::imp::DummyBase, meta)
-
-#define _TrefSubType(T) _TrefSubTypeWithMeta(T, nullptr)
-#define _TrefSubTypeWithMeta(T, meta) \
-  _TrefTypeWithMeta(T, meta);         \
-  _TrefPushSubclass(__base_t);
 
 // Just reflect the type.
 
@@ -510,21 +495,9 @@ struct get_parent<T, void_t<decltype((typename T::__parent_t*)0)>> {
 // NOTE: not support template.
 //////////////////////////
 
-// Reflect the external type and register it into a hierarchy tree.
-// NOTE: the entire tree should be in same namespace.
-
-#define _TrefExternalRootType(T) _TrefExternalRootTypeWithMeta(T, nullptr)
-#define _TrefExternalRootTypeWithMeta(T, meta) \
-  _TrefTypeCommon(T, tref::imp::DummyBase, meta)
-
-#define _TrefExternalSubType(T, Base) \
-  _TrefExternalSubTypeWithMeta(T, Base, nullptr)
-#define _TrefExternalSubTypeWithMeta(T, Base, meta) \
-  _TrefTypeCommon(T, Base, meta);                   \
-  _TrefPushSubclass(Base);
-
 // Just reflect the external type.
-#define _TrefExternalType(T, Base) _TrefTypeCommon(T, Base)
+#define _TrefExternalType(T, Base) _TrefTypeCommon(T, Base, nullptr)
+#define _TrefExternalTypeWithMeta(T, Base, meta) _TrefTypeCommon(T, Base, meta)
 
 //////////////////////////////////////////////////////////////////////////
 // enum reflection
@@ -757,34 +730,28 @@ struct Flags {
 #define TrefHasTref _TrefHasTref
 #define TrefVersion _TrefVersion
 
+using imp::base_of_t;
 using imp::class_info;
 using imp::ClassInfo;
 using imp::enclosing_class_t;
 using imp::FieldInfo;
 using imp::func_trait;
-using imp::has_base_class;
-using imp::is_reflected;
+using imp::has_base_class_v;
+using imp::is_reflected_v;
 using imp::member_t;
 using imp::overload_v;
 
-#define TrefBaseClass _TrefBaseClass
-#define TrefRootType _TrefRootType
-#define TrefRootTypeWithMeta _TrefRootTypeWithMeta
-#define TrefSubType _TrefSubType
-#define TrefSubTypeWithMeta _TrefSubTypeWithMeta
 #define TrefType _TrefType
 #define TrefTypeWithMeta _TrefTypeWithMeta
+#define TrefSubType _TrefSubType
 
 #define TrefField _TrefField
 #define TrefFieldWithMeta _TrefFieldWithMeta
 #define TrefMemberType _TrefMemberType
 #define TrefMemberTypeWithMeta _TrefMemberTypeWithMeta
 
-#define TrefExternalRootType _TrefExternalRootType
-#define TrefExternalRootTypeWithMeta _TrefExternalRootTypeWithMeta
-#define TrefExternalSubType _TrefExternalSubType
-#define TrefExternalSubTypeWithMeta _TrefExternalSubTypeWithMeta
 #define TrefExternalType _TrefExternalType
+#define TrefExternalTypeWithMeta _TrefExternalTypeWithMeta
 
 /// enum
 

@@ -1,5 +1,6 @@
 #include "tref.hpp"
 
+#include <cassert>
 #include <functional>
 #include <iostream>
 #include <sstream>
@@ -20,7 +21,7 @@ struct TypeA {
   TrefField(val);
 };
 
-static_assert(is_reflected<TypeA>());
+static_assert(is_reflected_v<TypeA>);
 static_assert(class_info<TypeA>().name == "TypeA");
 static_assert(class_info<TypeA>().size == sizeof(TypeA));
 static_assert(class_info<TypeA>().each_field([](auto info, int) {
@@ -44,8 +45,8 @@ struct TypeB : TypeA {
   TrefField(foo);
 };
 
-static_assert(has_base_class<TypeB>());
-static_assert(is_same_v<TrefBaseClass(TypeB), TypeA>);
+static_assert(has_base_class_v<TypeB>);
+static_assert(is_same_v<base_of_t<TypeB>, TypeA>);
 static_assert(is_same_v<decltype(class_info<TypeB>())::base_t, TypeA>);
 static_assert(class_info<TypeB>().each_field([](auto info, int level) {
   // exclude members of base class
@@ -87,15 +88,15 @@ static_assert(class_info<TempType<int>>().each_field([](auto info, int lv) {
 struct SubTypeA : TempType<int> {
   TrefType(SubTypeA);
 };
-static_assert(is_same_v<TrefBaseClass(SubTypeA), TempType<int>>);
-static_assert(!is_same_v<TrefBaseClass(SubTypeA), TempType<float>>);
+static_assert(is_same_v<base_of_t<SubTypeA>, TempType<int>>);
+static_assert(!is_same_v<base_of_t<SubTypeA>, TempType<float>>);
 
 struct SubTypeB : TempType<float> {
   TrefType(SubTypeB);
 };
 
-static_assert(is_same_v<TrefBaseClass(SubTypeB), TempType<float>>);
-static_assert(!is_same_v<TrefBaseClass(SubTypeB), TempType<int>>);
+static_assert(is_same_v<base_of_t<SubTypeB>, TempType<float>>);
+static_assert(!is_same_v<base_of_t<SubTypeB>, TempType<int>>);
 
 //////////////////////////////
 // class meta
@@ -470,7 +471,7 @@ void dumpTree() {
 
 template <typename T>
 void dumpDetails() {
-  constexpr auto& clsInfo = class_info<T>();
+  constexpr const auto& clsInfo = class_info<T>();
   printf("==== subclass details of %s ====\n", clsInfo.name.data());
 
   constexpr auto memName = "baseVal";
@@ -481,8 +482,8 @@ void dumpDetails() {
   clsInfo.each_subclass([](auto info, int) {
     using S = typename decltype(info)::class_t;
     string_view parent = "<none>";
-    if constexpr (has_base_class<S>()) {
-      parent = class_info<TrefBaseClass(S)>().name;
+    if constexpr (has_base_class_v<S>) {
+      parent = class_info<base_of_t<S>>().name;
     }
 
     printf("==================\n");
@@ -501,7 +502,7 @@ void dumpDetails() {
       printf("%-2d:%-12s: type: %s", info.index, info.name.data(),
              typeid(info.value).name());
 
-      if constexpr (std::is_base_of_v<Meta, decltype(info.meta)>) {
+      if constexpr (std::is_base_of_v<::Meta, decltype(info.meta)>) {
         printf(", meta: %s\n", info.meta.to_string().c_str());
       } else {
         printf("\n");
@@ -565,7 +566,7 @@ struct MetaHookableFunc {};
 /////////////////////////////////////
 
 struct Base {
-  TrefRootType(Base);
+  TrefType(Base);
 
   int baseVal;
   TrefField(baseVal);
@@ -573,7 +574,7 @@ struct Base {
 
 template <typename T>
 struct Data : Base {
-  TrefSubType(Data);
+  TrefType(Data);
 
   T t;
   TrefFieldWithMeta(t, Meta{"test"});
@@ -587,21 +588,25 @@ struct Data : Base {
 };
 
 struct Child : Data<int> {
-  TrefSubType(Child);
+  TrefType(Child);
 
   float z;
   TrefField(z);
 };
+TrefSubType(Data<int>);
+TrefSubType(Child);
 
 struct Child2 : Data<float> {
-  TrefSubType(Child2);
+  TrefType(Child2);
 
   float zz;
   TrefField(zz);
 };
+TrefSubType(Data<float>);
+TrefSubType(Child2);
 
 struct SubChild : Child2 {
-  TrefSubTypeWithMeta(SubChild, MetaExportedClass{});
+  TrefTypeWithMeta(SubChild, MetaExportedClass{});
 
   int subVal = 99;
 
@@ -623,6 +628,8 @@ struct SubChild : Child2 {
   };
   TrefFieldWithMeta(hookableFunc, MetaHookableFunc{});
 };
+
+TrefSubType(SubChild);
 
 void TestHookable() {
   printf("======== Test Hookable =========\n");
@@ -666,23 +673,30 @@ void TestHookable() {
 
 template <typename T>
 struct TempSubChild : SubChild {
-  TrefSubType(TempSubChild);
+  TrefType(TempSubChild);
 
   T newVal;
   TrefField(newVal);
 };
 
 struct SubChildOfTempSubChild1 : TempSubChild<int> {
-  TrefSubTypeWithMeta(SubChildOfTempSubChild1, MetaExportedClass{});
+  TrefTypeWithMeta(SubChildOfTempSubChild1, MetaExportedClass{});
 };
+
+TrefSubType(TempSubChild<int>);
+TrefSubType(SubChildOfTempSubChild1);
 
 struct SubChildOfTempSubChild2 : TempSubChild<float> {
-  TrefSubTypeWithMeta(SubChildOfTempSubChild2, MetaExportedClass{});
+  TrefTypeWithMeta(SubChildOfTempSubChild2, MetaExportedClass{});
 };
+TrefSubType(TempSubChild<float>);
+TrefSubType(SubChildOfTempSubChild2);
 
 struct SubChildOfTempSubChild3 : TempSubChild<double> {
-  TrefSubTypeWithMeta(SubChildOfTempSubChild3, MetaExportedClass{});
+  TrefTypeWithMeta(SubChildOfTempSubChild3, MetaExportedClass{});
 };
+TrefSubType(TempSubChild<double>);
+TrefSubType(SubChildOfTempSubChild3);
 
 //////////////////////////////////////////////////////////////////////////
 // reflection for external type
@@ -693,8 +707,9 @@ struct ExternalData : SubChild {
   float money;
 };
 
+#if TEST_EXTERNAL_BINDING
 struct BindExternalData {
-  TrefExternalSubTypeWithMeta(ExternalData, SubChild, (FakeMeta{333, 444}));
+  TrefExternalTypeWithMeta(ExternalData, SubChild, (FakeMeta{333, 444}));
 
   TrefField(age);
   TrefField(age2);
@@ -703,9 +718,10 @@ struct BindExternalData {
 
 static_assert(tref::is_reflected<ExternalData>());
 static_assert(tref::has_base_class<ExternalData>());
-static_assert(is_same_v<TrefBaseClass(ExternalData), SubChild>);
+static_assert(is_same_v<TrefBaseOf(ExternalData), SubChild>);
 static_assert(class_info<ExternalData>().meta.foo == 333);
 static_assert(class_info<ExternalData>().meta.bar == 444);
+#endif
 
 //////////////////////////////////////////////////////////////////////////
 // subclass system test
@@ -717,10 +733,12 @@ static_assert(hasSubclass<Base>("TempSubChild"));
 static_assert(hasSubclass<Base>("SubChildOfTempSubChild1"));
 static_assert(hasSubclass<Base>("SubChildOfTempSubChild2"));
 static_assert(hasSubclass<Base>("SubChildOfTempSubChild3"));
+#if TEST_EXTERNAL_BINDING
 static_assert(hasSubclass<SubChild>("ExternalData"));
 static_assert(hasSubclass<Base>("ExternalData"));
+#endif
 
-void TestReflection() {
+void TrefTest() {
   TestEnum();
   dumpTree<Base>();
   dumpDetails<Child2>();
