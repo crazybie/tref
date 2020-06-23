@@ -46,7 +46,9 @@ namespace imp {
 using namespace std;
 
 //////////////////////////////////////////////////////////////////////////
+//
 // Common facility
+//
 //////////////////////////////////////////////////////////////////////////
 
 template <typename T>
@@ -224,7 +226,9 @@ constexpr Overload<Args...> overload_v{};
       15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1))
 
 //////////////////////////////////////////////////////////////////////////
+//
 // Core facility
+//
 //////////////////////////////////////////////////////////////////////////
 
 template <int N = 255>
@@ -248,10 +252,7 @@ tuple<Id<invalid_index>> _tref_state(C**, Tag, Id<0> id);
                        decltype(_tref_state((_TrefRemoveParen(C)**)0, Tag{}, \
                                             tref::imp::Id<>{}))>::value
 
-#define _TrefStatePush(C, Tag, ...) \
-  friend _TrefStatePushImp(C, Tag, __VA_ARGS__)
-
-#define _TrefStatePushImp(C, Tag, ...)                                    \
+#define _TrefStatePush(C, Tag, ...)                                       \
   constexpr auto _tref_state(_TrefRemoveParen(C)**, Tag,                  \
                              tref::imp::Id<_TrefStateCnt(C, Tag) + 1> id) \
       _TrefReturn(std::tuple(id, __VA_ARGS__))
@@ -276,7 +277,9 @@ constexpr bool each_state(F f) {
 };
 
 //////////////////////////////////////////////////////////////////////////
+//
 // class reflection
+//
 //////////////////////////////////////////////////////////////////////////
 
 struct DummyBase;
@@ -409,15 +412,19 @@ struct ClassInfo {
   }
 };
 
-#define _TrefClassMeta(T, Base, meta)                                 \
-  friend constexpr auto _tref_class_info(_TrefRemoveParen(T)**) {     \
+#define _TrefClassMetaImp(T, Base, meta)                              \
+  constexpr auto _tref_class_info(_TrefRemoveParen(T)**) {            \
     return tref::imp::ClassInfo{                                      \
         (_TrefRemoveParen(T)*)0, _TrefStringify(_TrefRemoveParen(T)), \
         sizeof T, tref::imp::Type<_TrefRemoveParen(Base)>{}, meta};   \
   }
 
+#define _TrefClassMeta(T, Base, meta) friend _TrefClassMetaImp(T, Base, meta)
+
 //////////////////////////////////////////////////////////////////////////
+//
 // macros for class reflection
+//
 //////////////////////////////////////////////////////////////////////////
 
 template <typename T, class = void_t<>>
@@ -444,17 +451,16 @@ struct get_parent<T, void_t<decltype((typename T::__parent_t*)0)>> {
       tref::imp::FieldInfo{id.value, _TrefStringify(_TrefRemoveParen(T)), val, \
                            meta})
 
-#define _TrefSubType(T)                                                        \
-  _TrefStatePushImp(typename tref::imp::get_parent<_TrefRemoveParen(T)>::type, \
-                    tref::imp::SubclassTag, tref::imp::Type<T>{})
-
+#define _TrefSubType(T)                                   \
+  _TrefStatePush(typename tref::imp::get_parent<T>::type, \
+                 tref::imp::SubclassTag, tref::imp::Type<T>{})
 
 // Just reflect the type.
 
 #define _TrefType(T) _TrefTypeWithMeta(T, nullptr)
-#define _TrefTypeWithMeta(T, meta)                                            \
- private:                                                                     \
-  using __base_t = typename tref::imp::get_parent<_TrefRemoveParen(T)>::type; \
+#define _TrefTypeWithMeta(T, meta)                          \
+ private:                                                   \
+  using __base_t = typename tref::imp::get_parent<T>::type; \
   _TrefTypeCommon(T, __base_t, meta);
 
 // reflect member variable & function
@@ -472,23 +478,31 @@ struct get_parent<T, void_t<decltype((typename T::__parent_t*)0)>> {
                  meta)
 
 // auto select from _TrefField1 or _TrefField2 by argument count
-#define _TrefField(...) \
-  _TrefMsvcExpand(      \
+#define _TrefFieldImp(...) \
+  _TrefMsvcExpand(         \
       _TrefDelay(_TrefChooseField, _TrefCount(__VA_ARGS__))(__VA_ARGS__))
 #define _TrefChooseField(N) _TrefField##N
 
+#define _TrefField(...) friend _TrefFieldImp(__VA_ARGS__)
+
 // auto select from _TrefFieldWithMeta2 or _TrefFieldWithMeta3 by argument
 // count
-#define _TrefFieldWithMeta(...)                        \
+#define _TrefFieldWithMetaImp(...)                     \
   _TrefMsvcExpand(_TrefDelay(_TrefChooseFieldWithMeta, \
                              _TrefCount(__VA_ARGS__))(__VA_ARGS__))
 #define _TrefChooseFieldWithMeta(N) _TrefFieldWithMeta##N
 
+#define _TrefFieldWithMeta(...) friend _TrefFieldWithMetaImp(__VA_ARGS__)
+
 // reflect member type
-#define _TrefMemberType(T) _TrefMemberTypeWithMeta(T, nullptr)
-#define _TrefMemberTypeWithMeta(T, meta)      \
+#define _TrefMemberTypeImp(T) _TrefMemberTypeWithMetaImp(T, nullptr)
+#define _TrefMemberTypeWithMetaImp(T, meta)   \
   _TrefPushField(tref::imp::MemberTypeTag, T, \
                  tref::imp::Type<_TrefRemoveParen(T)>{}, meta)
+
+#define _TrefMemberType(T) friend _TrefMemberTypeImp(T)
+#define _TrefMemberTypeWithMeta(T, meta) \
+  friend _TrefMemberTypeWithMetaImp(T, meta)
 
 //////////////////////////
 // Reflect external types
@@ -500,7 +514,9 @@ struct get_parent<T, void_t<decltype((typename T::__parent_t*)0)>> {
 #define _TrefExternalTypeWithMeta(T, Base, meta) _TrefTypeCommon(T, Base, meta)
 
 //////////////////////////////////////////////////////////////////////////
+//
 // enum reflection
+//
 //////////////////////////////////////////////////////////////////////////
 
 struct EnumValueConvertor {
@@ -724,7 +740,9 @@ struct Flags {
 }  // namespace imp
 
 //////////////////////////////////////////////////////////////////////////
+//
 // public APIs
+//
 //////////////////////////////////////////////////////////////////////////
 
 #define TrefHasTref _TrefHasTref
