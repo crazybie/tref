@@ -301,8 +301,7 @@ constexpr auto class_info() {
 };
 
 template <typename T>
-using base_of_t =
-    typename decltype(tref::class_info<_TrefRemoveParen(T)>())::base_t;
+using base_of_t = typename decltype(class_info<T>())::base_t;
 
 template <typename T>
 constexpr auto has_base_class_v =
@@ -445,37 +444,42 @@ struct get_parent<T, void_t<decltype((typename T::__parent_t*)0)>> {
   using __parent_t = self_t;           \
   _TrefClassMeta(T, Base, meta);
 
-#define _TrefPushField(Tag, T, val, meta)                                      \
-  _TrefStatePush(                                                              \
-      self_t, Tag,                                                             \
-      tref::imp::FieldInfo{id.value, _TrefStringify(_TrefRemoveParen(T)), val, \
-                           meta})
+#define _TrefSubType(T) \
+  _TrefSubTypeImp(T, typename tref::imp::get_parent<_TrefRemoveParen(T)>::type)
 
-#define _TrefSubType(T)                                   \
-  _TrefStatePush(typename tref::imp::get_parent<_TrefRemoveParen(T)>::type, \
-                 tref::imp::SubclassTag, tref::imp::Type<T>{})
+#define _TrefSubTypeImp(T, Base) \
+  _TrefStatePush(Base, tref::imp::SubclassTag, tref::imp::Type<T>{})
+
+#define _TrefPushFieldImp(T, Tag, name, val, meta) \
+  _TrefStatePush(T, Tag, tref::imp::FieldInfo{id.value, name, val, meta})
 
 // Just reflect the type.
 
 #define _TrefType(T) _TrefTypeWithMeta(T, nullptr)
-#define _TrefTypeWithMeta(T, meta)                          \
- private:                                                   \
-  using __base_t = typename tref::imp::get_parent<_TrefRemoveParen(T)::type; \
+#define _TrefTypeWithMeta(T, meta)                                            \
+ private:                                                                     \
+  using __base_t = typename tref::imp::get_parent<_TrefRemoveParen(T)>::type; \
   _TrefTypeCommon(T, __base_t, meta);
 
 // reflect member variable & function
 
 #define _TrefField1(t) _TrefFieldWithMeta2(t, nullptr)
-#define _TrefFieldWithMeta2(t, meta) \
-  _TrefPushField(tref::imp::FieldTag, t, &self_t::_TrefRemoveParen(t), meta)
+#define _TrefFieldWithMeta2(t, meta) _TrefFieldWithMeta2Imp(self_t, t, meta)
+#define _TrefFieldWithMeta2Imp(T, t, meta)               \
+  _TrefPushFieldImp(T, tref::imp::FieldTag,              \
+                    _TrefStringify(_TrefRemoveParen(t)), \
+                    &T::_TrefRemoveParen(t), meta)
 
 // provide arguments for overloaded function
 #define _TrefField2(t, sig) _TrefFieldWithMeta3(t, sig, nullptr)
-#define _TrefFieldWithMeta3(t, sig, meta)                      \
-  _TrefPushField(tref::imp::FieldTag, t,                       \
-                 tref::imp::overload_v<_TrefRemoveParen(sig)>( \
-                     &self_t::_TrefRemoveParen(t)),            \
-                 meta)
+#define _TrefFieldWithMeta3(t, sig, meta) \
+  _TrefFieldWithMeta3Imp(self_t, t, sig, meta)
+
+#define _TrefFieldWithMeta3Imp(T, t, sig, meta)                              \
+  _TrefPushFieldImp(                                                         \
+      T, tref::imp::FieldTag, _TrefStringify(_TrefRemoveParen(t)),           \
+      tref::imp::overload_v<_TrefRemoveParen(sig)>(&T::_TrefRemoveParen(t)), \
+      meta)
 
 // auto select from _TrefField1 or _TrefField2 by argument count
 #define _TrefFieldImp(...) \
@@ -496,9 +500,10 @@ struct get_parent<T, void_t<decltype((typename T::__parent_t*)0)>> {
 
 // reflect member type
 #define _TrefMemberTypeImp(T) _TrefMemberTypeWithMetaImp(T, nullptr)
-#define _TrefMemberTypeWithMetaImp(T, meta)   \
-  _TrefPushField(tref::imp::MemberTypeTag, T, \
-                 tref::imp::Type<_TrefRemoveParen(T)>{}, meta)
+#define _TrefMemberTypeWithMetaImp(T, meta)              \
+  _TrefPushFieldImp(self_t, tref::imp::MemberTypeTag,    \
+                    _TrefStringify(_TrefRemoveParen(T)), \
+                    tref::imp::Type<_TrefRemoveParen(T)>{}, meta)
 
 #define _TrefMemberType(T) friend _TrefMemberTypeImp(T)
 #define _TrefMemberTypeWithMeta(T, meta) \
@@ -768,8 +773,11 @@ using imp::overload_v;
 #define TrefMemberType _TrefMemberType
 #define TrefMemberTypeWithMeta _TrefMemberTypeWithMeta
 
-#define TrefExternalType _TrefExternalType
-#define TrefExternalTypeWithMeta _TrefExternalTypeWithMeta
+#define TrefNoBase tref::imp::DummyBase
+#define TrefExternalTypeWithMeta _TrefClassMetaImp
+#define TrefExternalFieldWithMeta _TrefFieldWithMeta2Imp
+#define TrefExternalOverloadedFieldWithMeta _TrefFieldWithMeta3Imp
+#define TrefExternalSubType _TrefSubTypeImp
 
 /// enum
 
@@ -786,9 +794,9 @@ using imp::string_to_enum;
 #define TrefMemberEnumEx _TrefMemberEnumEx
 #define TrefMemberEnumWithMeta _TrefMemberEnumWithMeta
 #define TrefMemberEnumWithMetaEx _TrefMemberEnumWithMetaEx
-#define TrefEnumImp _TrefEnumImp
-#define TrefEnumImpEx _TrefEnumImpEx
-#define TrefEnumImpWithMeta _TrefEnumImpWithMeta
-#define TrefEnumImpWithMetaEx _TrefEnumImpWithMetaEx
+#define TrefExternalEnum _TrefEnumImp
+#define TrefExternalEnumEx _TrefEnumImpEx
+#define TrefExternalEnumWithMeta _TrefEnumImpWithMeta
+#define TrefExternalEnumWithMetaEx _TrefEnumImpWithMetaEx
 
 }  // namespace tref
