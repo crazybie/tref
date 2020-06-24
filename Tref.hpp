@@ -294,19 +294,19 @@ template <typename T>
 constexpr auto is_reflected_v =
     !std::is_same_v<decltype(_tref_class_info((T**)0)), void>;
 
-// Use function to delay the evaluation.
+// Use function to delay the evaluation. (for non-conformance mode of MSVC)
 template <typename T>
 constexpr auto class_info() {
   return _tref_class_info((T**)0);
 };
 
-template <typename T>
-using base_of_t =
-    typename decltype(tref::class_info<_TrefRemoveParen(T)>())::base_t;
+// Use macro to delay the evaluation. (for non-conformance mode of MSVC)
+#define _TrefBaseOf(T) \
+  typename decltype(tref::imp::class_info<_TrefRemoveParen(T)>())::base_t
 
 template <typename T>
 constexpr auto has_base_class_v =
-    is_reflected_v<T> ? !std::is_same_v<base_of_t<T>, DummyBase> : false;
+    is_reflected_v<T> ? !std::is_same_v<_TrefBaseOf(T), DummyBase> : false;
 
 // Meta for Member
 
@@ -748,7 +748,6 @@ struct Flags {
 #define TrefHasTref _TrefHasTref
 #define TrefVersion _TrefVersion
 
-using imp::base_of_t;
 using imp::class_info;
 using imp::ClassInfo;
 using imp::enclosing_class_t;
@@ -762,6 +761,7 @@ using imp::overload_v;
 #define TrefType _TrefType
 #define TrefTypeWithMeta _TrefTypeWithMeta
 #define TrefSubType _TrefSubType
+#define TrefBaseOf _TrefBaseOf
 
 #define TrefField _TrefField
 #define TrefFieldWithMeta _TrefFieldWithMeta

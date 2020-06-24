@@ -46,7 +46,7 @@ struct TypeB : TypeA {
 };
 
 static_assert(has_base_class_v<TypeB>);
-static_assert(is_same_v<base_of_t<TypeB>, TypeA>);
+static_assert(is_same_v<TrefBaseOf(TypeB), TypeA>);
 static_assert(is_same_v<decltype(class_info<TypeB>())::base_t, TypeA>);
 static_assert(class_info<TypeB>().each_field([](auto info, int level) {
   // exclude members of base class
@@ -88,15 +88,15 @@ static_assert(class_info<TempType<int>>().each_field([](auto info, int lv) {
 struct SubTypeA : TempType<int> {
   TrefType(SubTypeA);
 };
-static_assert(is_same_v<base_of_t<SubTypeA>, TempType<int>>);
-static_assert(!is_same_v<base_of_t<SubTypeA>, TempType<float>>);
+static_assert(is_same_v<TrefBaseOf(SubTypeA), TempType<int>>);
+static_assert(!is_same_v<TrefBaseOf(SubTypeA), TempType<float>>);
 
 struct SubTypeB : TempType<float> {
   TrefType(SubTypeB);
 };
 
-static_assert(is_same_v<base_of_t<SubTypeB>, TempType<float>>);
-static_assert(!is_same_v<base_of_t<SubTypeB>, TempType<int>>);
+static_assert(is_same_v<TrefBaseOf(SubTypeB), TempType<float>>);
+static_assert(!is_same_v<TrefBaseOf(SubTypeB), TempType<int>>);
 
 //////////////////////////////
 // class meta
@@ -483,7 +483,7 @@ void dumpDetails() {
     using S = typename decltype(info)::class_t;
     string_view parent = "<none>";
     if constexpr (has_base_class_v<S>) {
-      parent = class_info<base_of_t<S>>().name;
+      parent = class_info<TrefBaseOf(S)>().name;
     }
 
     printf("==================\n");
@@ -716,8 +716,13 @@ struct BindExternalData {
   TrefField(money);
 };
 
+<<<<<<< HEAD
 static_assert(tref::is_reflected<ExternalData>());
 static_assert(tref::has_base_class<ExternalData>());
+=======
+static_assert(tref::is_reflected_v<ExternalData>);
+static_assert(tref::has_base_class_v<ExternalData>);
+>>>>>>> 854664a... fix compiling error for non-conformance mode of MSVC.
 static_assert(is_same_v<TrefBaseOf(ExternalData), SubChild>);
 static_assert(class_info<ExternalData>().meta.foo == 333);
 static_assert(class_info<ExternalData>().meta.bar == 444);
