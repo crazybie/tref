@@ -65,6 +65,10 @@ and more.
 - Reflect overloaded functions.
 - Factory pattern support: introspect all sub-classes from one base class.
 
+## Tested Platforms
+- MSVC 2017 (conformance mode & non-conformance mode)
+- Clang 10
+
 ## TODO
 - Reflect function details, e.g. arguments and return type.
 - Specify a new name for the reflected element.
