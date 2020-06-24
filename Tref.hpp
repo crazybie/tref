@@ -355,7 +355,7 @@ struct ClassInfo {
         each_state<T, Tag>([&](const auto& info) { return f(info, level); });
     if (next)
       if constexpr (!is_same_v<Base, DummyBase>)
-        return class_info<Base>().each_r<Tag>(f, level + 1);
+        return class_info<Base>().template each_r<Tag>(f, level + 1);
     return next;
   }
 
@@ -409,7 +409,8 @@ struct ClassInfo {
   constexpr auto _tref_class_info(_TrefRemoveParen(T)**) {            \
     return tref::imp::ClassInfo{                                      \
         (_TrefRemoveParen(T)*)0, _TrefStringify(_TrefRemoveParen(T)), \
-        sizeof T, tref::imp::Type<_TrefRemoveParen(Base)>{}, meta};   \
+        sizeof(_TrefRemoveParen(T)),                                  \
+        tref::imp::Type<_TrefRemoveParen(Base)>{}, meta};             \
   }
 
 #define _TrefClassMeta(T, Base, meta) friend _TrefClassMetaImp(T, Base, meta)
