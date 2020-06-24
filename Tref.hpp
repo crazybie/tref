@@ -360,7 +360,6 @@ struct ClassInfo {
   }
 
   // Iterate through the members recursively.
-  //
   // @param f: [](MemberInfo info, int level) -> bool, return false to stop the
   // iterating.
   template <typename F>
@@ -386,12 +385,6 @@ struct ClassInfo {
   }
 
   // Iterate through the subclasses recursively.
-  //
-  // NOTE:
-  // if use it at compiling time, please make sure to call it behind all
-  // the declarations of the subclasses, otherwise the subclasses may be
-  // incomplete.
-  //
   // @param F: [](ClassInfo info, int level) -> bool, return false to stop the
   // iterating.
   template <typename F>
@@ -421,11 +414,16 @@ struct ClassInfo {
 
 #define _TrefClassMeta(T, Base, meta) friend _TrefClassMetaImp(T, Base, meta)
 
+#define _TrefPushFieldImp(T, Tag, name, val, meta) \
+  _TrefStatePush(T, Tag, tref::imp::FieldInfo{id.value, name, val, meta})
+
 //////////////////////////////////////////////////////////////////////////
 //
 // macros for class reflection
 //
 //////////////////////////////////////////////////////////////////////////
+
+// sub type
 
 template <typename T, class = void_t<>>
 struct get_parent {
@@ -433,9 +431,17 @@ struct get_parent {
 };
 
 template <typename T>
-struct get_parent<T, void_t<decltype((typename T::__parent_t*)0)>> {
+struct get_parent<T, void_t<typename T::__parent_t>> {
   using type = typename T::__parent_t;
 };
+
+#define _TrefSubType(T) \
+  _TrefSubTypeImp(T, typename tref::imp::get_parent<_TrefRemoveParen(T)>::type)
+
+#define _TrefSubTypeImp(T, Base) \
+  _TrefStatePush(Base, tref::imp::SubclassTag, tref::imp::Type<T>{})
+
+//
 
 #define _TrefTypeCommon(T, Base, meta) \
  private:                              \
@@ -444,15 +450,6 @@ struct get_parent<T, void_t<decltype((typename T::__parent_t*)0)>> {
  public:                               \
   using __parent_t = self_t;           \
   _TrefClassMeta(T, Base, meta);
-
-#define _TrefSubType(T) \
-  _TrefSubTypeImp(T, typename tref::imp::get_parent<_TrefRemoveParen(T)>::type)
-
-#define _TrefSubTypeImp(T, Base) \
-  _TrefStatePush(Base, tref::imp::SubclassTag, tref::imp::Type<T>{})
-
-#define _TrefPushFieldImp(T, Tag, name, val, meta) \
-  _TrefStatePush(T, Tag, tref::imp::FieldInfo{id.value, name, val, meta})
 
 // Just reflect the type.
 
@@ -509,15 +506,6 @@ struct get_parent<T, void_t<decltype((typename T::__parent_t*)0)>> {
 #define _TrefMemberType(T) friend _TrefMemberTypeImp(T)
 #define _TrefMemberTypeWithMeta(T, meta) \
   friend _TrefMemberTypeWithMetaImp(T, meta)
-
-//////////////////////////
-// Reflect external types
-// NOTE: not support template.
-//////////////////////////
-
-// Just reflect the external type.
-#define _TrefExternalType(T, Base) _TrefTypeCommon(T, Base, nullptr)
-#define _TrefExternalTypeWithMeta(T, Base, meta) _TrefTypeCommon(T, Base, meta)
 
 //////////////////////////////////////////////////////////////////////////
 //
@@ -774,6 +762,10 @@ using imp::overload_v;
 #define TrefMemberType _TrefMemberType
 #define TrefMemberTypeWithMeta _TrefMemberTypeWithMeta
 
+//////////////////////////
+// Reflect external types
+// NOTE: not support template.
+//////////////////////////
 #define TrefNoBase tref::imp::DummyBase
 #define TrefExternalTypeWithMeta _TrefClassMetaImp
 #define TrefExternalFieldWithMeta _TrefFieldWithMeta2Imp
@@ -786,6 +778,8 @@ using imp::enum_info;
 using imp::enum_to_string;
 using imp::Flags;
 using imp::string_to_enum;
+
+// ex version support meta for enum items.
 
 #define TrefEnum _TrefEnum
 #define TrefEnumEx _TrefEnumEx
