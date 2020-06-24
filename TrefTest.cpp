@@ -3,10 +3,11 @@
 #include <iostream>
 #include <sstream>
 
-#include "tref.hpp"
+#include "Tref.hpp"
 
 using namespace std;
 using namespace tref;
+using namespace std::literals;
 
 //////////////////////////////////////////////////////////////////////////
 // basic usage
@@ -138,7 +139,7 @@ struct UsingTemplateIntance {
 static_assert(class_info<decltype(UsingTemplateIntance{}.a)>().name ==
               "ReflectedTemplate");
 static_assert(class_info<UsingTemplateIntance>().each_field([](auto info, int) {
-  using MT = decltype(info)::member_t;
+  using MT = typename decltype(info)::member_t;
   return class_info<MT>().name == "ReflectedTemplate";
 }));
 
@@ -204,13 +205,13 @@ static_assert(class_info<TestInnerTemplate::InnerTemplate<int>>().name ==
 
 static_assert(class_info<TestInnerTemplate::InnerTemplate<int>>().each_field(
     [](auto info, int) {
-      static_assert(is_same_v<decltype(info)::member_t, int>);
+      static_assert(is_same_v<typename decltype(info)::member_t, int>);
       return info.name == "a";
     }));
 
 static_assert(class_info<TestInnerTemplate>().each_member_type([](auto info,
                                                                   int) {
-  using MT = decltype(info.value)::type;
+  using MT = typename decltype(info.value)::type;
 
   static_assert(is_same_v<MT, TestInnerTemplate::InnerTemplate<int>>);
   static_assert(class_info<MT>().name == "InnerTemplate");
@@ -339,7 +340,7 @@ struct DataWithEnumMemType {
 
 static_assert(class_info<DataWithEnumMemType>().each_member_type([](auto info,
                                                                     int) {
-  using T = decltype(info.value)::type;
+  using T = typename decltype(info.value)::type;
   static_assert(is_enum_v<T> && is_same_v<T, DataWithEnumMemType::EnumF>);
   return info.name == "EnumF";
 }));
@@ -375,7 +376,7 @@ static_assert(enum_info<EnumValueMetaTest>().items[1].meta.otherMetaData == 22);
 // meta for values of enum in class
 
 struct TestInnerEnumValueWithMeta {
-  TrefMemberEnumEx(EnumValueWithMeta, (EnumA, "Enum A"), (EnumB, "Enum B"));
+  TrefMemberEnumEx(EnumValueWithMeta, (EnumA, "Enum A"sv), (EnumB, "Enum B"sv));
 
   TrefMemberEnumEx(EnumValueWithMeta2,
                    (EnumA, (CustomEnumItem{"desc for a", "comment for a", 11})),
@@ -428,7 +429,7 @@ template <typename T>
 void DumpEnum() {
   printf("========= Enum Members of %s ======\n", enum_info<T>().name.data());
   enum_info<T>().each_item([](auto info) {
-    printf("name: %.*s, val: %d\n", info.name.size(), info.name.data(),
+    printf("name: %.*s, val: %d\n", (int)info.name.size(), info.name.data(),
            (int)info.value);
     return true;
   });
@@ -463,7 +464,7 @@ void dumpTree() {
 
     assert(info.name.size() > 0);
     printf("%s (rtti: %s)\n", info.name.data(),
-           typeid(decltype(info)::class_t).name());
+           typeid(typename decltype(info)::class_t).name());
     return true;
   });
   puts("============");
@@ -471,13 +472,13 @@ void dumpTree() {
 
 template <typename T>
 void dumpDetails() {
-  constexpr const auto& clsInfo = class_info<T>();
+  constexpr auto clsInfo = class_info<T>();
   printf("==== subclass details of %s ====\n", clsInfo.name.data());
 
   constexpr auto memName = "baseVal";
   constexpr auto index = clsInfo.get_field_index(memName);
   printf("index of %s: %d\n", memName,
-         index > 0 ? clsInfo.get_field<index>().index : index);
+         index > 0 ? clsInfo.template get_field<index>().index : index);
 
   clsInfo.each_subclass([](auto info, int) {
     using S = typename decltype(info)::class_t;
@@ -488,13 +489,14 @@ void dumpDetails() {
 
     printf("==================\n");
     printf("type: %6s, parent: %6s, size: %d\n", info.name.data(),
-           parent.data(), info.size);
+           parent.data(), (int)info.size);
     printf("--- members ---\n");
 
     int preLv = 0;
     class_info<S>().each_field([&](auto info, int lv) {
       if (lv != preLv) {
-        auto owner = class_info<decltype(info)::enclosing_class_t>().name;
+        auto owner =
+            class_info<typename decltype(info)::enclosing_class_t>().name;
         printf("--- from %s ---\n", owner.data());
       }
       preLv = lv;
