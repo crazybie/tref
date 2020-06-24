@@ -59,7 +59,7 @@ and more.
 - Normal class and class template reflection with unified syntax.
 - Reflect elements with additional meta-data.
 - Enum class reflection, support user-defined value, and meta for each item.
-- Reflect external types of third-party code with unified syntax.
+- Reflect external types of third-party code.
 - Reflect class-level and instance-level variables and functions.
 - Reflect nested member types.
 - Reflect overloaded functions.
