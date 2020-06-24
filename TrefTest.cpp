@@ -1,9 +1,9 @@
-#include "tref.hpp"
-
 #include <cassert>
 #include <functional>
 #include <iostream>
 #include <sstream>
+
+#include "tref.hpp"
 
 using namespace std;
 using namespace tref;
@@ -295,7 +295,7 @@ static_assert(enum_info<EnumA>().each_item([](auto info) {
 
 enum class ExternalEnum { Value1 = 1, Value2 = Value1 + 4 };
 
-TrefEnumImp(ExternalEnum, Value1, Value2);
+TrefExternalEnum(ExternalEnum, Value1, Value2);
 
 static_assert(enum_info<ExternalEnum>().name == "ExternalEnum");
 static_assert(enum_info<ExternalEnum>().size == sizeof(ExternalEnum));
@@ -309,7 +309,7 @@ struct TestExternalTemplateInnerEnum {
 };
 
 // enum value is not necessary to external enum, here just for test.
-TrefEnumImp(
+TrefExternalEnum(
     (TestExternalTemplateInnerEnum<int, int>::InnerEnum),
     ValX = 1,
     (ValY = (int)TestExternalTemplateInnerEnum<int, int>::InnerEnum::ValX +
@@ -707,41 +707,31 @@ struct ExternalData : SubChild {
   float money;
 };
 
-#if TEST_EXTERNAL_BINDING
-struct BindExternalData {
-  TrefExternalTypeWithMeta(ExternalData, SubChild, (FakeMeta{333, 444}));
+TrefExternalTypeWithMeta(ExternalData, SubChild, (FakeMeta{333, 444}));
+TrefExternalFieldWithMeta(ExternalData, age, nullptr);
+TrefExternalFieldWithMeta(ExternalData, age2, nullptr);
+TrefExternalFieldWithMeta(ExternalData, money, nullptr);
+TrefExternalSubType(ExternalData, SubChild);
 
-  TrefField(age);
-  TrefField(age2);
-  TrefField(money);
-};
-
-<<<<<<< HEAD
-static_assert(tref::is_reflected<ExternalData>());
-static_assert(tref::has_base_class<ExternalData>());
-=======
 static_assert(tref::is_reflected_v<ExternalData>);
 static_assert(tref::has_base_class_v<ExternalData>);
->>>>>>> 854664a... fix compiling error for non-conformance mode of MSVC.
 static_assert(is_same_v<TrefBaseOf(ExternalData), SubChild>);
 static_assert(class_info<ExternalData>().meta.foo == 333);
 static_assert(class_info<ExternalData>().meta.bar == 444);
-#endif
 
 //////////////////////////////////////////////////////////////////////////
 // subclass system test
 
 // Test the subclass system behind all the definition of subclasses,
 // Please see the `NOTE` of the each_subclass_r function.
+static_assert(hasSubclass<Base>("Child"));
 static_assert(hasSubclass<Base>("SubChild"));
 static_assert(hasSubclass<Base>("TempSubChild"));
 static_assert(hasSubclass<Base>("SubChildOfTempSubChild1"));
 static_assert(hasSubclass<Base>("SubChildOfTempSubChild2"));
 static_assert(hasSubclass<Base>("SubChildOfTempSubChild3"));
-#if TEST_EXTERNAL_BINDING
 static_assert(hasSubclass<SubChild>("ExternalData"));
 static_assert(hasSubclass<Base>("ExternalData"));
-#endif
 
 void TrefTest() {
   TestEnum();
