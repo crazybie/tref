@@ -1,7 +1,8 @@
 # Tref: A *T*iny compile-time *ref*lection system.
 
 ## Motivation
-I am a C++ game developer, I have been hunting for a powerful and easy to use reflection library for a long time, but none of them make me happy completely. 
+I am a C++ game developer, I have been hunting for a powerful and easy to use reflection library for a long time, but none of them make me happy completely(even the new proposal). 
+
 What I need is a reflection system that:
 
 #### Must be efficient for performance critical scenarios.
