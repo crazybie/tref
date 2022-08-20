@@ -338,8 +338,7 @@ struct DataWithEnumMemType {
   TrefMemberType(EnumF);
 };
 
-static_assert(class_info<DataWithEnumMemType>().each_member_type([](auto info,
-                                                                    int) {
+static_assert(class_info<DataWithEnumMemType>().each_member_type([](auto info, int) {
   using T = typename decltype(info.value)::type;
   static_assert(is_enum_v<T> && is_same_v<T, DataWithEnumMemType::EnumF>);
   return info.name == "EnumF";
