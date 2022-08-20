@@ -317,13 +317,13 @@ struct FieldInfo {
 
   static constexpr auto is_member_v = !is_same_v<enclosing_class_t, void>;
 
-  int index;
+  int         index;
   string_view name;
 
   // Possible values:
   // 1. Address of member variables & functions
   // 2. Type<T> for member type T: use decltype(value)::type to retrive it.
-  T value;
+  T    value;
   Meta meta;
 
   constexpr FieldInfo(int idx, string_view n, T a, Meta m)
@@ -338,9 +338,9 @@ struct ClassInfo {
   using base_t = Base;
 
   string_view name;
-  size_t size;
-  Type<Base> base;
-  Meta meta;
+  size_t      size;
+  Type<Base>  base;
+  Meta        meta;
 
   constexpr ClassInfo(T*, string_view n, size_t sz, Type<Base> b, Meta&& m)
       : name{n}, size{sz}, base{b}, meta{move(m)} {
@@ -439,8 +439,12 @@ struct get_parent<T, void_t<typename T::__parent_t>> {
 #define _TrefSubType(T) \
   _TrefSubTypeImp(T, typename tref::imp::get_parent<_TrefRemoveParen(T)>::type)
 
-#define _TrefSubTypeImp(T, Base) \
-  _TrefStatePush(Base, tref::imp::SubclassTag, tref::imp::Type<T>{})
+#define _TrefSubTypeImp(T, Base)                                     \
+  _TrefStatePush(Base, tref::imp::SubclassTag, tref::imp::Type<T>{}) \
+      _TrefAllowSemicolon(T)
+
+// fix lint issue: `TrefSubType(T);` : empty statement.
+#define _TrefAllowSemicolon(T) using T = T
 
 //
 
@@ -537,8 +541,8 @@ struct EnumValueConvertor {
 template <typename T, typename Meta>
 struct EnumItem {
   string_view name;
-  T value;
-  Meta meta;
+  T           value;
+  Meta        meta;
 };
 
 template <typename T, size_t N, typename ItemMeta>
@@ -548,10 +552,10 @@ template <typename T, size_t N, typename Meta, typename ItemMeta>
 struct EnumInfo {
   using enum_t = T;
 
-  string_view name;
-  size_t size;
+  string_view               name;
+  size_t                    size;
   EnumItems<T, N, ItemMeta> items;
-  Meta meta;
+  Meta                      meta;
 
   // @param f: [](string_view name, enum_t val)-> bool, return false to stop
   // the iterating.
@@ -593,10 +597,10 @@ struct EnumInfo {
 };
 
 template <typename T, int N, typename Meta, typename ItemMeta>
-constexpr auto makeEnumInfo(string_view name,
-                            size_t size,
+constexpr auto makeEnumInfo(string_view                      name,
+                            size_t                           size,
                             const EnumItems<T, N, ItemMeta>& items,
-                            Meta meta) {
+                            Meta                             meta) {
   return EnumInfo<T, N, Meta, ItemMeta>{name, size, items, meta};
 }
 
