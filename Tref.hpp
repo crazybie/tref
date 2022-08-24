@@ -20,8 +20,10 @@ COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
-
+#ifndef TREF_H
+#define TREF_H
 #pragma once
+
 #include <array>
 #include <string_view>
 #include <tuple>
@@ -800,3 +802,4 @@ using imp::string_to_enum;
 #define TrefExternalEnumWithMetaEx _TrefEnumImpWithMetaEx
 
 }  // namespace tref
+#endif
