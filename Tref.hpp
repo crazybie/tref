@@ -375,7 +375,7 @@ struct ClassInfo {
     return each_r<FieldTag>(f);
   }
 
-  [[nodiscard]] constexpr int get_field_index(string_view field_name) const {
+  constexpr auto get_field_index(string_view field_name) const {
     int idx = invalid_index;
     each_field([&](auto info, int) {
       if (info.name == field_name) {
@@ -387,7 +387,7 @@ struct ClassInfo {
     return idx;
   }
 
-  template <int index>
+  template <size_t index>
   constexpr auto get_field() const {
     return get<1>(get_state<T, FieldTag, index>());
   }
