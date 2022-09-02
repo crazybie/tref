@@ -29,16 +29,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <tuple>
 #include <type_traits>
 
-#define _TrefHasTref
-#define _TrefVersion 0x010000
+#define ZTrefHasTref
+#define ZTrefVersion 0x010000
 
 #ifdef _MSC_VER
-#define __TrefCxxVersion _MSVC_LANG
+#define ZTrefCxxVersion _MSVC_LANG
 #else
-#define __TrefCxxVersion __cplusplus
+#define ZTrefCxxVersion __cplusplus
 #endif
 
-#if __TrefCxxVersion < 201700L
+#if ZTrefCxxVersion < 201700L
 #error "Need a c++17 compiler"
 #endif
 
@@ -61,7 +61,7 @@ struct Type {
 template <size_t L, size_t... R>
 constexpr auto tail(index_sequence<L, R...>) {
   return index_sequence<R...>();
-};
+}
 
 // member pointer trait
 
@@ -123,107 +123,112 @@ struct Overload {
 template <typename... Args>
 constexpr Overload<Args...> overload_v{};
 
+template <typename... Meta>
+struct Metas : Meta... {
+  constexpr explicit Metas(Meta... m) : Meta(m)... {}
+};
+
 //  common macros
 
-#define _TrefReturn(...) \
+#define ZTrefReturn(...) \
   ->decltype(__VA_ARGS__) { return __VA_ARGS__; }
 
-#define _TrefMsvcExpand(...) __VA_ARGS__
-#define _TrefDelay(X, ...) _TrefMsvcExpand(X(__VA_ARGS__))
-#define _TrefDelay2(X, ...) _TrefMsvcExpand(X(__VA_ARGS__))
-#define _TrefFirst(...) _TrefMsvcExpand(_TrefFirst2(__VA_ARGS__))
-#define _TrefFirst2(A, ...) A
-#define _TrefSecond(...) _TrefMsvcExpand(_TrefSecond2(__VA_ARGS__))
-#define _TrefSecond2(A, B, ...) B
-#define _TrefTail(A, ...) __VA_ARGS__
-#define _TrefStringify(...) _TrefStringify2(__VA_ARGS__)
-#define _TrefStringify2(...) #__VA_ARGS__
+#define ZTrefMsvcExpand(...) __VA_ARGS__
+#define ZTrefDelay(X, ...) ZTrefMsvcExpand(X(__VA_ARGS__))
+#define ZTrefDelay2(X, ...) ZTrefMsvcExpand(X(__VA_ARGS__))
+#define ZTrefFirst(...) ZTrefMsvcExpand(ZTrefFirst2(__VA_ARGS__))
+#define ZTrefFirst2(A, ...) A
+#define ZTrefSecond(...) ZTrefMsvcExpand(ZTrefSecond2(__VA_ARGS__))
+#define ZTrefSecond2(A, B, ...) B
+#define ZTrefTail(A, ...) __VA_ARGS__
+#define ZTrefStringify(...) ZTrefStringify2(__VA_ARGS__)
+#define ZTrefStringify2(...) #__VA_ARGS__
 
-#define _TrefRemoveParen(A) \
-  _TrefDelay(_TrefRemoveParen2, _TrefRemoveParenHelper A)
-#define _TrefRemoveParen2(...) \
-  _TrefDelay2(_TrefTail, _TrefRemoveParenHelper##__VA_ARGS__)
-#define _TrefRemoveParenHelper(...) _, __VA_ARGS__
-#define _TrefRemoveParenHelper_TrefRemoveParenHelper _,
+#define ZTrefRemoveParen(A) \
+  ZTrefDelay(ZTrefRemoveParen2, ZTrefRemoveParenHelper A)
+#define ZTrefRemoveParen2(...) \
+  ZTrefDelay2(ZTrefTail, ZTrefRemoveParenHelper##__VA_ARGS__)
+#define ZTrefRemoveParenHelper(...) _, __VA_ARGS__
+#define ZTrefRemoveParenHelperZTrefRemoveParenHelper _,
 
-#define _TrefFirstRemoveParen(X) _TrefFirst(_TrefRemoveParen(X))
-#define _TrefSecondRemoveParen(X) _TrefSecond(_TrefRemoveParen(X))
+#define ZTrefFirstRemoveParen(X) ZTrefFirst(ZTrefRemoveParen(X))
+#define ZTrefSecondRemoveParen(X) ZTrefSecond(ZTrefRemoveParen(X))
 
 // macro version of map
 
-#define _TrefMap(f, arg1, ...)                                         \
-  _TrefMsvcExpand(_TrefDelay(_TrefChooseMap, _TrefCount(__VA_ARGS__))( \
+#define ZTrefMap(f, arg1, ...)                                         \
+  ZTrefMsvcExpand(ZTrefDelay(ZTrefChooseMap, ZTrefCount(__VA_ARGS__))( \
       f, arg1, __VA_ARGS__))
 
-#define _TrefChooseMap(N) _TrefMap##N
+#define ZTrefChooseMap(N) ZTrefMap##N
 
-#define _TrefMap1(m, a, x) m(a, x)
-#define _TrefMap2(m, a, x, ...) \
-  m(a, x) _TrefMsvcExpand(_TrefMap1(m, a, __VA_ARGS__))
-#define _TrefMap3(m, a, x, ...) \
-  m(a, x) _TrefMsvcExpand(_TrefMap2(m, a, __VA_ARGS__))
-#define _TrefMap4(m, a, x, ...) \
-  m(a, x) _TrefMsvcExpand(_TrefMap3(m, a, __VA_ARGS__))
-#define _TrefMap5(m, a, x, ...) \
-  m(a, x) _TrefMsvcExpand(_TrefMap4(m, a, __VA_ARGS__))
-#define _TrefMap6(m, a, x, ...) \
-  m(a, x) _TrefMsvcExpand(_TrefMap5(m, a, __VA_ARGS__))
-#define _TrefMap7(m, a, x, ...) \
-  m(a, x) _TrefMsvcExpand(_TrefMap6(m, a, __VA_ARGS__))
-#define _TrefMap8(m, a, x, ...) \
-  m(a, x) _TrefMsvcExpand(_TrefMap7(m, a, __VA_ARGS__))
-#define _TrefMap9(m, a, x, ...) \
-  m(a, x) _TrefMsvcExpand(_TrefMap8(m, a, __VA_ARGS__))
-#define _TrefMap10(m, a, x, ...) \
-  m(a, x) _TrefMsvcExpand(_TrefMap9(m, a, __VA_ARGS__))
-#define _TrefMap11(m, a, x, ...) \
-  m(a, x) _TrefMsvcExpand(_TrefMap10(m, a, __VA_ARGS__))
-#define _TrefMap12(m, a, x, ...) \
-  m(a, x) _TrefMsvcExpand(_TrefMap11(m, a, __VA_ARGS__))
-#define _TrefMap13(m, a, x, ...) \
-  m(a, x) _TrefMsvcExpand(_TrefMap12(m, a, __VA_ARGS__))
-#define _TrefMap14(m, a, x, ...) \
-  m(a, x) _TrefMsvcExpand(_TrefMap13(m, a, __VA_ARGS__))
-#define _TrefMap15(m, a, x, ...) \
-  m(a, x) _TrefMsvcExpand(_TrefMap14(m, a, __VA_ARGS__))
-#define _TrefMap16(m, a, x, ...) \
-  m(a, x) _TrefMsvcExpand(_TrefMap15(m, a, __VA_ARGS__))
-#define _TrefMap17(m, a, x, ...) \
-  m(a, x) _TrefMsvcExpand(_TrefMap16(m, a, __VA_ARGS__))
-#define _TrefMap18(m, a, x, ...) \
-  m(a, x) _TrefMsvcExpand(_TrefMap17(m, a, __VA_ARGS__))
-#define _TrefMap19(m, a, x, ...) \
-  m(a, x) _TrefMsvcExpand(_TrefMap18(m, a, __VA_ARGS__))
-#define _TrefMap20(m, a, x, ...) \
-  m(a, x) _TrefMsvcExpand(_TrefMap19(m, a, __VA_ARGS__))
-#define _TrefMap21(m, a, x, ...) \
-  m(a, x) _TrefMsvcExpand(_TrefMap20(m, a, __VA_ARGS__))
-#define _TrefMap22(m, a, x, ...) \
-  m(a, x) _TrefMsvcExpand(_TrefMap21(m, a, __VA_ARGS__))
-#define _TrefMap23(m, a, x, ...) \
-  m(a, x) _TrefMsvcExpand(_TrefMap22(m, a, __VA_ARGS__))
-#define _TrefMap24(m, a, x, ...) \
-  m(a, x) _TrefMsvcExpand(_TrefMap23(m, a, __VA_ARGS__))
-#define _TrefMap25(m, a, x, ...) \
-  m(a, x) _TrefMsvcExpand(_TrefMap24(m, a, __VA_ARGS__))
-#define _TrefMap26(m, a, x, ...) \
-  m(a, x) _TrefMsvcExpand(_TrefMap25(m, a, __VA_ARGS__))
-#define _TrefMap27(m, a, x, ...) \
-  m(a, x) _TrefMsvcExpand(_TrefMap26(m, a, __VA_ARGS__))
-#define _TrefMap28(m, a, x, ...) \
-  m(a, x) _TrefMsvcExpand(_TrefMap27(m, a, __VA_ARGS__))
-#define _TrefMap29(m, a, x, ...) \
-  m(a, x) _TrefMsvcExpand(_TrefMap28(m, a, __VA_ARGS__))
-#define _TrefMap30(m, a, x, ...) \
-  m(a, x) _TrefMsvcExpand(_TrefMap29(m, a, __VA_ARGS__))
+#define ZTrefMap1(m, a, x) m(a, x)
+#define ZTrefMap2(m, a, x, ...) \
+  m(a, x) ZTrefMsvcExpand(ZTrefMap1(m, a, __VA_ARGS__))
+#define ZTrefMap3(m, a, x, ...) \
+  m(a, x) ZTrefMsvcExpand(ZTrefMap2(m, a, __VA_ARGS__))
+#define ZTrefMap4(m, a, x, ...) \
+  m(a, x) ZTrefMsvcExpand(ZTrefMap3(m, a, __VA_ARGS__))
+#define ZTrefMap5(m, a, x, ...) \
+  m(a, x) ZTrefMsvcExpand(ZTrefMap4(m, a, __VA_ARGS__))
+#define ZTrefMap6(m, a, x, ...) \
+  m(a, x) ZTrefMsvcExpand(ZTrefMap5(m, a, __VA_ARGS__))
+#define ZTrefMap7(m, a, x, ...) \
+  m(a, x) ZTrefMsvcExpand(ZTrefMap6(m, a, __VA_ARGS__))
+#define ZTrefMap8(m, a, x, ...) \
+  m(a, x) ZTrefMsvcExpand(ZTrefMap7(m, a, __VA_ARGS__))
+#define ZTrefMap9(m, a, x, ...) \
+  m(a, x) ZTrefMsvcExpand(ZTrefMap8(m, a, __VA_ARGS__))
+#define ZTrefMap10(m, a, x, ...) \
+  m(a, x) ZTrefMsvcExpand(ZTrefMap9(m, a, __VA_ARGS__))
+#define ZTrefMap11(m, a, x, ...) \
+  m(a, x) ZTrefMsvcExpand(ZTrefMap10(m, a, __VA_ARGS__))
+#define ZTrefMap12(m, a, x, ...) \
+  m(a, x) ZTrefMsvcExpand(ZTrefMap11(m, a, __VA_ARGS__))
+#define ZTrefMap13(m, a, x, ...) \
+  m(a, x) ZTrefMsvcExpand(ZTrefMap12(m, a, __VA_ARGS__))
+#define ZTrefMap14(m, a, x, ...) \
+  m(a, x) ZTrefMsvcExpand(ZTrefMap13(m, a, __VA_ARGS__))
+#define ZTrefMap15(m, a, x, ...) \
+  m(a, x) ZTrefMsvcExpand(ZTrefMap14(m, a, __VA_ARGS__))
+#define ZTrefMap16(m, a, x, ...) \
+  m(a, x) ZTrefMsvcExpand(ZTrefMap15(m, a, __VA_ARGS__))
+#define ZTrefMap17(m, a, x, ...) \
+  m(a, x) ZTrefMsvcExpand(ZTrefMap16(m, a, __VA_ARGS__))
+#define ZTrefMap18(m, a, x, ...) \
+  m(a, x) ZTrefMsvcExpand(ZTrefMap17(m, a, __VA_ARGS__))
+#define ZTrefMap19(m, a, x, ...) \
+  m(a, x) ZTrefMsvcExpand(ZTrefMap18(m, a, __VA_ARGS__))
+#define ZTrefMap20(m, a, x, ...) \
+  m(a, x) ZTrefMsvcExpand(ZTrefMap19(m, a, __VA_ARGS__))
+#define ZTrefMap21(m, a, x, ...) \
+  m(a, x) ZTrefMsvcExpand(ZTrefMap20(m, a, __VA_ARGS__))
+#define ZTrefMap22(m, a, x, ...) \
+  m(a, x) ZTrefMsvcExpand(ZTrefMap21(m, a, __VA_ARGS__))
+#define ZTrefMap23(m, a, x, ...) \
+  m(a, x) ZTrefMsvcExpand(ZTrefMap22(m, a, __VA_ARGS__))
+#define ZTrefMap24(m, a, x, ...) \
+  m(a, x) ZTrefMsvcExpand(ZTrefMap23(m, a, __VA_ARGS__))
+#define ZTrefMap25(m, a, x, ...) \
+  m(a, x) ZTrefMsvcExpand(ZTrefMap24(m, a, __VA_ARGS__))
+#define ZTrefMap26(m, a, x, ...) \
+  m(a, x) ZTrefMsvcExpand(ZTrefMap25(m, a, __VA_ARGS__))
+#define ZTrefMap27(m, a, x, ...) \
+  m(a, x) ZTrefMsvcExpand(ZTrefMap26(m, a, __VA_ARGS__))
+#define ZTrefMap28(m, a, x, ...) \
+  m(a, x) ZTrefMsvcExpand(ZTrefMap27(m, a, __VA_ARGS__))
+#define ZTrefMap29(m, a, x, ...) \
+  m(a, x) ZTrefMsvcExpand(ZTrefMap28(m, a, __VA_ARGS__))
+#define ZTrefMap30(m, a, x, ...) \
+  m(a, x) ZTrefMsvcExpand(ZTrefMap29(m, a, __VA_ARGS__))
 
-#define _TrefEvaluateCount(_1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, \
+#define ZTrefEvaluateCount(_1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, \
                            _13, _14, _15, _16, _17, _18, _19, _20, _21, _22,  \
                            _23, _24, _25, _26, _27, _28, _29, _30, N, ...)    \
   N
 
-#define _TrefCount(...)                                                        \
-  _TrefMsvcExpand(_TrefEvaluateCount(                                          \
+#define ZTrefCount(...)                                                        \
+  ZTrefMsvcExpand(ZTrefEvaluateCount(                                          \
       __VA_ARGS__, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, \
       15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1))
 
@@ -249,15 +254,15 @@ template <typename C, typename Tag>
 tuple<Id<invalid_index>> _tref_state(C**, Tag, Id<0> id);
 
 // use macro to delay the evaluation
-#define _TrefStateCnt(C, Tag)                                                \
+#define ZTrefStateCnt(C, Tag)                                                \
   std::tuple_element_t<0,                                                    \
-                       decltype(_tref_state((_TrefRemoveParen(C)**)0, Tag{}, \
+                       decltype(_tref_state((ZTrefRemoveParen(C)**)0, Tag(), \
                                             tref::imp::Id<>{}))>::value
 
-#define _TrefStatePush(C, Tag, ...)                                       \
-  constexpr auto _tref_state(_TrefRemoveParen(C)**, Tag,                  \
-                             tref::imp::Id<_TrefStateCnt(C, Tag) + 1> id) \
-      _TrefReturn(std::tuple(id, __VA_ARGS__))
+#define ZTrefStatePush(C, Tag, ...)                                       \
+  constexpr auto _tref_state(ZTrefRemoveParen(C)**, Tag,                  \
+                             tref::imp::Id<ZTrefStateCnt(C, Tag) + 1> id) \
+      ZTrefReturn(std::tuple(id, __VA_ARGS__))
 
 template <class C, class Tag, int idx>
 constexpr auto get_state() {
@@ -271,12 +276,13 @@ constexpr bool state_fold(index_sequence<Is...>, F&& f) {
 
 template <typename C, typename Tag, typename F>
 constexpr bool each_state(F f) {
-  constexpr auto cnt = _TrefStateCnt(C, Tag);
+  constexpr auto cnt = ZTrefStateCnt(C, Tag);
   if constexpr (cnt > 0) {
     return state_fold<C, Tag>(tail(make_index_sequence<cnt + 1>{}), f);
-  } else
+  } else {
     return true;
-};
+  }
+}
 
 //////////////////////////////////////////////////////////////////////////
 //
@@ -300,15 +306,15 @@ constexpr auto is_reflected_v =
 template <typename T>
 constexpr auto class_info() {
   return _tref_class_info((T**)0);
-};
+}
 
 // Use macro to delay the evaluation. (for non-conformance mode of MSVC)
-#define _TrefBaseOf(T) \
-  typename decltype(tref::imp::class_info<_TrefRemoveParen(T)>())::base_t
+#define ZTrefBaseOf(T) \
+  typename decltype(tref::imp::class_info<ZTrefRemoveParen(T)>())::base_t
 
 template <typename T>
 constexpr auto has_base_class_v =
-    is_reflected_v<T> ? !std::is_same_v<_TrefBaseOf(T), DummyBase> : false;
+    is_reflected_v<T> && !std::is_same_v<ZTrefBaseOf(T), DummyBase>;
 
 // Meta for Member
 
@@ -369,10 +375,10 @@ struct ClassInfo {
     return each_r<FieldTag>(f);
   }
 
-  constexpr int get_field_index(string_view name) const {
+  [[nodiscard]] constexpr int get_field_index(string_view field_name) const {
     int idx = invalid_index;
     each_field([&](auto info, int) {
-      if (info.name == name) {
+      if (info.name == field_name) {
         idx = info.index;
         return false;
       }
@@ -407,18 +413,18 @@ struct ClassInfo {
   }
 };
 
-#define _TrefClassMetaImp(T, Base, meta)                              \
-  constexpr auto _tref_class_info(_TrefRemoveParen(T)**) {            \
+#define ZTrefClassMetaImp(T, Base, meta)                              \
+  constexpr auto _tref_class_info(ZTrefRemoveParen(T)**) {            \
     return tref::imp::ClassInfo{                                      \
-        (_TrefRemoveParen(T)*)0, _TrefStringify(_TrefRemoveParen(T)), \
-        sizeof(_TrefRemoveParen(T)),                                  \
-        tref::imp::Type<_TrefRemoveParen(Base)>{}, meta};             \
+        (ZTrefRemoveParen(T)*)0, ZTrefStringify(ZTrefRemoveParen(T)), \
+        sizeof(ZTrefRemoveParen(T)),                                  \
+        tref::imp::Type<ZTrefRemoveParen(Base)>{}, meta};             \
   }
 
-#define _TrefClassMeta(T, Base, meta) friend _TrefClassMetaImp(T, Base, meta)
+#define ZTrefClassMeta(T, Base, meta) friend ZTrefClassMetaImp(T, Base, meta)
 
-#define _TrefPushFieldImp(T, Tag, name, val, meta) \
-  _TrefStatePush(T, Tag, tref::imp::FieldInfo{id.value, name, val, meta})
+#define ZTrefPushFieldImp(T, Tag, name, val, meta) \
+  ZTrefStatePush(T, Tag, tref::imp::FieldInfo{id.value, name, val, meta})
 
 //////////////////////////////////////////////////////////////////////////
 //
@@ -438,81 +444,81 @@ struct get_parent<T, void_t<typename T::__parent_t>> {
   using type = typename T::__parent_t;
 };
 
-#define _TrefSubType(T) \
-  _TrefSubTypeImp(T, typename tref::imp::get_parent<_TrefRemoveParen(T)>::type)
+#define ZTrefSubType(T) \
+  ZTrefSubTypeImp(T, typename tref::imp::get_parent<ZTrefRemoveParen(T)>::type)
 
-#define _TrefSubTypeImp(T, Base)                                     \
-  _TrefStatePush(Base, tref::imp::SubclassTag, tref::imp::Type<T>{}) \
-      _TrefAllowSemicolon(T)
+#define ZTrefSubTypeImp(T, Base)                                                       \
+  ZTrefStatePush(Base, tref::imp::SubclassTag, tref::imp::Type<ZTrefRemoveParen(T)>{}) \
+      ZTrefAllowSemicolon(ZTrefRemoveParen(T))
 
 // fix lint issue: `TrefSubType(T);` : empty statement.
-#define _TrefAllowSemicolon(T) using T = T
+#define ZTrefAllowSemicolon(...) void __(__VA_ARGS__)
 
 //
 
-#define _TrefTypeCommon(T, Base, meta) \
+#define ZTrefTypeCommon(T, Base, meta) \
  private:                              \
-  using self_t = _TrefRemoveParen(T);  \
+  using self_t = ZTrefRemoveParen(T);  \
                                        \
  public:                               \
   using __parent_t = self_t;           \
-  _TrefClassMeta(T, Base, meta);
+  ZTrefClassMeta(T, Base, meta);
 
 // Just reflect the type.
 
-#define _TrefType(T) _TrefTypeWithMeta(T, nullptr)
-#define _TrefTypeWithMeta(T, meta)                                            \
+#define ZTrefType(T) ZTrefTypeWithMeta(T, nullptr)
+#define ZTrefTypeWithMeta(T, meta)                                            \
  private:                                                                     \
-  using __base_t = typename tref::imp::get_parent<_TrefRemoveParen(T)>::type; \
-  _TrefTypeCommon(T, __base_t, meta);
+  using __base_t = typename tref::imp::get_parent<ZTrefRemoveParen(T)>::type; \
+  ZTrefTypeCommon(T, __base_t, meta);
 
 // reflect member variable & function
 
-#define _TrefField1(t) _TrefFieldWithMeta2(t, nullptr)
-#define _TrefFieldWithMeta2(t, meta) _TrefFieldWithMeta2Imp(self_t, t, meta)
-#define _TrefFieldWithMeta2Imp(T, t, meta)               \
-  _TrefPushFieldImp(T, tref::imp::FieldTag,              \
-                    _TrefStringify(_TrefRemoveParen(t)), \
-                    &T::_TrefRemoveParen(t), meta)
+#define ZTrefField1(t) ZTrefFieldWithMeta2(t, nullptr)
+#define ZTrefFieldWithMeta2(t, meta) ZTrefFieldWithMeta2Imp(self_t, t, meta)
+#define ZTrefFieldWithMeta2Imp(T, t, meta)               \
+  ZTrefPushFieldImp(T, tref::imp::FieldTag,              \
+                    ZTrefStringify(ZTrefRemoveParen(t)), \
+                    &T::ZTrefRemoveParen(t), meta)
 
 // provide arguments for overloaded function
-#define _TrefField2(t, sig) _TrefFieldWithMeta3(t, sig, nullptr)
-#define _TrefFieldWithMeta3(t, sig, meta) \
-  _TrefFieldWithMeta3Imp(self_t, t, sig, meta)
+#define ZTrefField2(t, sig) ZTrefFieldWithMeta3(t, sig, nullptr)
+#define ZTrefFieldWithMeta3(t, sig, meta) \
+  ZTrefFieldWithMeta3Imp(self_t, t, sig, meta)
 
-#define _TrefFieldWithMeta3Imp(T, t, sig, meta)                              \
-  _TrefPushFieldImp(                                                         \
-      T, tref::imp::FieldTag, _TrefStringify(_TrefRemoveParen(t)),           \
-      tref::imp::overload_v<_TrefRemoveParen(sig)>(&T::_TrefRemoveParen(t)), \
+#define ZTrefFieldWithMeta3Imp(T, t, sig, meta)                              \
+  ZTrefPushFieldImp(                                                         \
+      T, tref::imp::FieldTag, ZTrefStringify(ZTrefRemoveParen(t)),           \
+      tref::imp::overload_v<ZTrefRemoveParen(sig)>(&T::ZTrefRemoveParen(t)), \
       meta)
 
-// auto select from _TrefField1 or _TrefField2 by argument count
-#define _TrefFieldImp(...) \
-  _TrefMsvcExpand(         \
-      _TrefDelay(_TrefChooseField, _TrefCount(__VA_ARGS__))(__VA_ARGS__))
-#define _TrefChooseField(N) _TrefField##N
+// auto select from ZTrefField1 or ZTrefField2 by argument count
+#define ZTrefFieldImp(...) \
+  ZTrefMsvcExpand(         \
+      ZTrefDelay(ZTrefChooseField, ZTrefCount(__VA_ARGS__))(__VA_ARGS__))
+#define ZTrefChooseField(N) ZTrefField##N
 
-#define _TrefField(...) friend _TrefFieldImp(__VA_ARGS__)
+#define ZTrefField(...) friend ZTrefFieldImp(__VA_ARGS__)
 
-// auto select from _TrefFieldWithMeta2 or _TrefFieldWithMeta3 by argument
+// auto select from ZTrefFieldWithMeta2 or ZTrefFieldWithMeta3 by argument
 // count
-#define _TrefFieldWithMetaImp(...)                     \
-  _TrefMsvcExpand(_TrefDelay(_TrefChooseFieldWithMeta, \
-                             _TrefCount(__VA_ARGS__))(__VA_ARGS__))
-#define _TrefChooseFieldWithMeta(N) _TrefFieldWithMeta##N
+#define ZTrefFieldWithMetaImp(...)                     \
+  ZTrefMsvcExpand(ZTrefDelay(ZTrefChooseFieldWithMeta, \
+                             ZTrefCount(__VA_ARGS__))(__VA_ARGS__))
+#define ZTrefChooseFieldWithMeta(N) ZTrefFieldWithMeta##N
 
-#define _TrefFieldWithMeta(...) friend _TrefFieldWithMetaImp(__VA_ARGS__)
+#define ZTrefFieldWithMeta(...) friend ZTrefFieldWithMetaImp(__VA_ARGS__)
 
 // reflect member type
-#define _TrefMemberTypeImp(T) _TrefMemberTypeWithMetaImp(T, nullptr)
-#define _TrefMemberTypeWithMetaImp(T, meta)              \
-  _TrefPushFieldImp(self_t, tref::imp::MemberTypeTag,    \
-                    _TrefStringify(_TrefRemoveParen(T)), \
-                    tref::imp::Type<_TrefRemoveParen(T)>{}, meta)
+#define ZTrefMemberTypeImp(T) ZTrefMemberTypeWithMetaImp(T, nullptr)
+#define ZTrefMemberTypeWithMetaImp(T, meta)              \
+  ZTrefPushFieldImp(self_t, tref::imp::MemberTypeTag,    \
+                    ZTrefStringify(ZTrefRemoveParen(T)), \
+                    tref::imp::Type<ZTrefRemoveParen(T)>{}, meta)
 
-#define _TrefMemberType(T) friend _TrefMemberTypeImp(T)
-#define _TrefMemberTypeWithMeta(T, meta) \
-  friend _TrefMemberTypeWithMetaImp(T, meta)
+#define ZTrefMemberType(T) friend ZTrefMemberTypeImp(T)
+#define ZTrefMemberTypeWithMeta(T, meta) \
+  friend ZTrefMemberTypeWithMetaImp(T, meta)
 
 //////////////////////////////////////////////////////////////////////////
 //
@@ -522,12 +528,12 @@ struct get_parent<T, void_t<typename T::__parent_t>> {
 
 struct EnumValueConvertor {
   template <typename T>
-  constexpr EnumValueConvertor(T v) : value((size_t)v) {
+  constexpr explicit EnumValueConvertor(T v) : value((size_t)v) {
     static_assert(sizeof(T) <= sizeof(value));
   }
 
   template <typename U>
-  constexpr EnumValueConvertor operator=(U) {
+  constexpr EnumValueConvertor& operator=(U) {
     return *this;
   }
 
@@ -555,7 +561,7 @@ struct EnumInfo {
   using enum_t = T;
 
   string_view               name;
-  size_t                    size;
+  size_t                    size = 0;
   EnumItems<T, N, ItemMeta> items;
   Meta                      meta;
 
@@ -611,80 +617,81 @@ void* _tref_enum_info(void*);
 template <typename T, typename = enable_if_t<is_enum_v<T>, bool>>
 constexpr auto enum_info() {
   return _tref_enum_info((T**)0);
-};
+}
 
 // Use it out of class.
-#define _TrefEnum(T, ...) _TrefEnumWithMeta(T, nullptr, __VA_ARGS__)
-#define _TrefEnumWithMeta(T, meta, ...) \
+#define ZTrefEnum(T, ...) ZTrefEnumWithMeta(T, nullptr, __VA_ARGS__)
+#define ZTrefEnumWithMeta(T, meta, ...) \
   enum class T { __VA_ARGS__ };         \
-  _TrefEnumImpWithMeta(T, meta, __VA_ARGS__)
+  ZTrefEnumImpWithMeta(T, meta, __VA_ARGS__)
 
 // Use it inside of class.
-#define _TrefMemberEnum(T, ...) _TrefMemberEnumWithMeta(T, 0, __VA_ARGS__)
-#define _TrefMemberEnumWithMeta(T, meta, ...) \
+#define ZTrefMemberEnum(T, ...) ZTrefMemberEnumWithMeta(T, 0, __VA_ARGS__)
+#define ZTrefMemberEnumWithMeta(T, meta, ...) \
   enum class T { __VA_ARGS__ };               \
-  friend _TrefEnumImpWithMeta(T, meta, __VA_ARGS__)
+  friend ZTrefEnumImpWithMeta(T, meta, __VA_ARGS__)
 
 // Reflect enum items of already defined enum.
-#define _TrefEnumImp(T, ...) _TrefEnumImpWithMeta(T, nullptr, __VA_ARGS__)
-#define _TrefEnumImpWithMeta(T, meta, ...)                                   \
-  constexpr auto _tref_enum_info(_TrefRemoveParen(T)**) {                    \
-    return tref::imp::EnumInfo<_TrefRemoveParen(T), _TrefCount(__VA_ARGS__), \
+#define ZTrefEnumImp(T, ...) ZTrefEnumImpWithMeta(T, nullptr, __VA_ARGS__)
+#define ZTrefEnumImpWithMeta(T, meta, ...)                                   \
+  constexpr auto _tref_enum_info(ZTrefRemoveParen(T)**) {                    \
+    return tref::imp::EnumInfo<ZTrefRemoveParen(T), ZTrefCount(__VA_ARGS__), \
                                decltype(meta), nullptr_t>{                   \
-        _TrefStringify(_TrefRemoveParen(T)),                                 \
-        sizeof(_TrefRemoveParen(T)),                                         \
-        {_TrefEnumStringize(T, __VA_ARGS__)},                                \
+        ZTrefStringify(ZTrefRemoveParen(T)),                                 \
+        sizeof(ZTrefRemoveParen(T)),                                         \
+        {ZTrefEnumStringize(T, __VA_ARGS__)},                                \
         std::move(meta)};                                                    \
   }
 
-#define _TrefEnumStringize(P, ...) \
-  _TrefMsvcExpand(_TrefMap(_TrefEnumStringizeSingle, P, __VA_ARGS__))
+#define ZTrefEnumStringize(P, ...) \
+  ZTrefMsvcExpand(ZTrefMap(ZTrefEnumStringizeSingle, P, __VA_ARGS__))
 
-#define _TrefEnumStringizeSingle(P, E)                                         \
-  tref::imp::EnumItem<_TrefRemoveParen(P), nullptr_t>{                         \
+// (EnumValueConvertor)EnumType::EnumItem = EnumItemValue,
+#define ZTrefEnumStringizeSingle(P, E)                                         \
+  tref::imp::EnumItem<ZTrefRemoveParen(P), nullptr_t>{                         \
       tref::imp::enum_trim_name(#E),                                           \
-      (tref::imp::EnumValueConvertor)_TrefRemoveParen(P)::_TrefRemoveParen(E), \
+      (tref::imp::EnumValueConvertor)ZTrefRemoveParen(P)::ZTrefRemoveParen(E), \
       nullptr},
 
-  //////////////////////////////////////////////////////////////////////////
-  // ex version support meta for enum items.
+//////////////////////////////////////////////////////////////////////////
+// ex version support meta for enum items.
 
-#define _TrefMemberEnumEx(T, ...) _TrefMemberEnumWithMetaEx(T, 0, __VA_ARGS__)
-#define _TrefMemberEnumWithMetaEx(T, meta, ...) \
-  _TrefEnumDefineEnum2(T, __VA_ARGS__);         \
-  friend _TrefEnumImpWithMetaEx(T, meta, __VA_ARGS__)
+#define ZTrefMemberEnumEx(T, ...) ZTrefMemberEnumWithMetaEx(T, 0, __VA_ARGS__)
+#define ZTrefMemberEnumWithMetaEx(T, meta, ...) \
+  ZTrefEnumDefineEnum2(T, __VA_ARGS__);         \
+  friend ZTrefEnumImpWithMetaEx(T, meta, __VA_ARGS__)
 
-#define _TrefEnumEx(T, ...) _TrefEnumWithMetaEx(T, nullptr, __VA_ARGS__)
+#define ZTrefEnumEx(T, ...) ZTrefEnumWithMetaEx(T, nullptr, __VA_ARGS__)
 
-#define _TrefEnumWithMetaEx(T, meta, ...) \
-  _TrefEnumDefineEnum2(T, __VA_ARGS__);   \
-  _TrefEnumImpWithMetaEx(T, meta, __VA_ARGS__)
+#define ZTrefEnumWithMetaEx(T, meta, ...) \
+  ZTrefEnumDefineEnum2(T, __VA_ARGS__);   \
+  ZTrefEnumImpWithMetaEx(T, meta, __VA_ARGS__)
 
-#define _TrefFirstArgAsEnumItemDef(P, E) _TrefFirstRemoveParen(E),
-#define _TrefEnumDefineEnum2(T, ...)                                      \
+#define ZTrefFirstArgAsEnumItemDef(P, E) ZTrefFirstRemoveParen(E),
+#define ZTrefEnumDefineEnum2(T, ...)                                      \
   enum class T {                                                          \
-    _TrefMsvcExpand(_TrefMap(_TrefFirstArgAsEnumItemDef, T, __VA_ARGS__)) \
+    ZTrefMsvcExpand(ZTrefMap(ZTrefFirstArgAsEnumItemDef, T, __VA_ARGS__)) \
   }
 
-#define _TrefEnumImpEx(T, ...) _TrefEnumImpWithMetaEx(T, 0, __VA_ARGS__)
-#define _TrefEnumImpWithMetaEx(T, meta, ...)                               \
-  constexpr auto _tref_enum_info(_TrefRemoveParen(T)**) {                  \
-    return tref::imp::makeEnumInfo<_TrefRemoveParen(T),                    \
-                                   _TrefCount(__VA_ARGS__)>(               \
-        _TrefStringify(_TrefRemoveParen(T)), sizeof(_TrefRemoveParen(T)),  \
-        std::array{_TrefEnumStringize2(T, __VA_ARGS__)}, std::move(meta)); \
+#define ZTrefEnumImpEx(T, ...) ZTrefEnumImpWithMetaEx(T, 0, __VA_ARGS__)
+#define ZTrefEnumImpWithMetaEx(T, meta, ...)                               \
+  constexpr auto _tref_enum_info(ZTrefRemoveParen(T)**) {                  \
+    return tref::imp::makeEnumInfo<ZTrefRemoveParen(T),                    \
+                                   ZTrefCount(__VA_ARGS__)>(               \
+        ZTrefStringify(ZTrefRemoveParen(T)), sizeof(ZTrefRemoveParen(T)),  \
+        std::array{ZTrefEnumStringize2(T, __VA_ARGS__)}, std::move(meta)); \
   }
 
-#define _TrefEnumStringize2(P, ...) \
-  _TrefMsvcExpand(_TrefMap(_TrefEnumStringizeSingle2, P, __VA_ARGS__))
+#define ZTrefEnumStringize2(P, ...) \
+  ZTrefMsvcExpand(ZTrefMap(ZTrefEnumStringizeSingle2, P, __VA_ARGS__))
 
-#define _TrefEnumStringizeSingle2(P, E)                                       \
-  tref::imp::EnumItem<_TrefRemoveParen(P),                                    \
-                      decltype(_TrefRemoveParen(_TrefSecondRemoveParen(E)))>{ \
-      tref::imp::enum_trim_name(_TrefStringify(_TrefFirstRemoveParen(E))),    \
-      (tref::imp::EnumValueConvertor)_TrefRemoveParen(P)::_TrefRemoveParen(   \
-          _TrefFirstRemoveParen(E)),                                          \
-      _TrefRemoveParen(_TrefSecondRemoveParen(E))},
+#define ZTrefEnumStringizeSingle2(P, E)                                       \
+  tref::imp::EnumItem<ZTrefRemoveParen(P),                                    \
+                      decltype(ZTrefRemoveParen(ZTrefSecondRemoveParen(E)))>{ \
+      tref::imp::enum_trim_name(ZTrefStringify(ZTrefFirstRemoveParen(E))),    \
+      (tref::imp::EnumValueConvertor)ZTrefRemoveParen(P)::ZTrefRemoveParen(   \
+          ZTrefFirstRemoveParen(E)),                                          \
+      ZTrefRemoveParen(ZTrefSecondRemoveParen(E))},
 
 /////////////////////////////////////
 
@@ -722,7 +729,7 @@ struct Flags {
   static_assert(std::is_enum_v<T>);
   Storage value = 0;
 
-  constexpr Flags() {}
+  constexpr Flags() = default;
   constexpr void clear() { value = 0; }
   constexpr bool hasFlag(T e) {
     assert(e < sizeof(value) * 8);
@@ -746,8 +753,8 @@ struct Flags {
 //
 //////////////////////////////////////////////////////////////////////////
 
-#define TrefHasTref _TrefHasTref
-#define TrefVersion _TrefVersion
+#define TrefHasTref ZTrefHasTref
+#define TrefVersion ZTrefVersion
 
 using imp::class_info;
 using imp::ClassInfo;
@@ -757,27 +764,28 @@ using imp::func_trait;
 using imp::has_base_class_v;
 using imp::is_reflected_v;
 using imp::member_t;
+using imp::Metas;
 using imp::overload_v;
 
-#define TrefType _TrefType
-#define TrefTypeWithMeta _TrefTypeWithMeta
-#define TrefSubType _TrefSubType
-#define TrefBaseOf _TrefBaseOf
+#define TrefType ZTrefType
+#define TrefTypeWithMeta ZTrefTypeWithMeta
+#define TrefSubType ZTrefSubType
+#define TrefBaseOf ZTrefBaseOf
 
-#define TrefField _TrefField
-#define TrefFieldWithMeta _TrefFieldWithMeta
-#define TrefMemberType _TrefMemberType
-#define TrefMemberTypeWithMeta _TrefMemberTypeWithMeta
+#define TrefField ZTrefField
+#define TrefFieldWithMeta ZTrefFieldWithMeta
+#define TrefMemberType ZTrefMemberType
+#define TrefMemberTypeWithMeta ZTrefMemberTypeWithMeta
 
 //////////////////////////
 // Reflect external types
 // NOTE: not support template.
 //////////////////////////
 #define TrefNoBase tref::imp::DummyBase
-#define TrefExternalTypeWithMeta _TrefClassMetaImp
-#define TrefExternalFieldWithMeta _TrefFieldWithMeta2Imp
-#define TrefExternalOverloadedFieldWithMeta _TrefFieldWithMeta3Imp
-#define TrefExternalSubType _TrefSubTypeImp
+#define TrefExternalTypeWithMeta ZTrefClassMetaImp
+#define TrefExternalFieldWithMeta ZTrefFieldWithMeta2Imp
+#define TrefExternalOverloadedFieldWithMeta ZTrefFieldWithMeta3Imp
+#define TrefExternalSubType ZTrefSubTypeImp
 
 /// enum
 
@@ -788,18 +796,18 @@ using imp::string_to_enum;
 
 // ex version support meta for enum items.
 
-#define TrefEnum _TrefEnum
-#define TrefEnumEx _TrefEnumEx
-#define TrefEnumWithMeta _TrefEnumWithMeta
-#define TrefEnumWithMetaEx _TrefEnumWithMetaEx
-#define TrefMemberEnum _TrefMemberEnum
-#define TrefMemberEnumEx _TrefMemberEnumEx
-#define TrefMemberEnumWithMeta _TrefMemberEnumWithMeta
-#define TrefMemberEnumWithMetaEx _TrefMemberEnumWithMetaEx
-#define TrefExternalEnum _TrefEnumImp
-#define TrefExternalEnumEx _TrefEnumImpEx
-#define TrefExternalEnumWithMeta _TrefEnumImpWithMeta
-#define TrefExternalEnumWithMetaEx _TrefEnumImpWithMetaEx
+#define TrefEnum ZTrefEnum
+#define TrefEnumEx ZTrefEnumEx
+#define TrefEnumWithMeta ZTrefEnumWithMeta
+#define TrefEnumWithMetaEx ZTrefEnumWithMetaEx
+#define TrefMemberEnum ZTrefMemberEnum
+#define TrefMemberEnumEx ZTrefMemberEnumEx
+#define TrefMemberEnumWithMeta ZTrefMemberEnumWithMeta
+#define TrefMemberEnumWithMetaEx ZTrefMemberEnumWithMetaEx
+#define TrefExternalEnum ZTrefEnumImp
+#define TrefExternalEnumEx ZTrefEnumImpEx
+#define TrefExternalEnumWithMeta ZTrefEnumImpWithMeta
+#define TrefExternalEnumWithMetaEx ZTrefEnumImpWithMetaEx
 
 }  // namespace tref
 #endif

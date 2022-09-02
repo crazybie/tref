@@ -573,7 +573,7 @@ struct Base {
   TrefField(baseVal);
 };
 
-template <typename T>
+template <typename T, typename U>
 struct Data : Base {
   TrefType(Data);
 
@@ -588,22 +588,22 @@ struct Data : Base {
   TrefFieldWithMeta(name, Meta{"entity name"});
 };
 
-struct Child : Data<int> {
+struct Child : Data<int,void> {
   TrefType(Child);
 
   float z;
   TrefField(z);
 };
-TrefSubType(Data<int>);
+TrefSubType((Data<int,void>));
 TrefSubType(Child);
 
-struct Child2 : Data<float> {
+struct Child2 : Data<float,void> {
   TrefType(Child2);
 
   float zz;
   TrefField(zz);
 };
-TrefSubType(Data<float>);
+TrefSubType((Data<float,void>));
 TrefSubType(Child2);
 
 struct SubChild : Child2 {
