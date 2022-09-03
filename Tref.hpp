@@ -445,14 +445,17 @@ struct get_parent<T, void_t<typename T::__parent_t>> {
 };
 
 #define ZTrefSubType(T) \
-  ZTrefSubTypeImp(T, typename tref::imp::get_parent<ZTrefRemoveParen(T)>::type)
+  ZTrefSubTypeImp(T, (typename ZTrefRemoveParen(T)::__base_t))
 
+// NOTE: can't put into class:
+// 1. template overloads to increase the id will not work on clang.
+// 1. friend function unrelated to the current class may be removed by clang.
 #define ZTrefSubTypeImp(T, Base)                                                       \
   ZTrefStatePush(Base, tref::imp::SubclassTag, tref::imp::Type<ZTrefRemoveParen(T)>{}) \
       ZTrefAllowSemicolon(ZTrefRemoveParen(T))
 
 // fix lint issue: `TrefSubType(T);` : empty statement.
-#define ZTrefAllowSemicolon(...) void __(__VA_ARGS__)
+#define ZTrefAllowSemicolon(...) using __ = std::void_t<__VA_ARGS__>
 
 //
 
@@ -468,7 +471,7 @@ struct get_parent<T, void_t<typename T::__parent_t>> {
 
 #define ZTrefType(T) ZTrefTypeWithMeta(T, nullptr)
 #define ZTrefTypeWithMeta(T, meta)                                            \
- private:                                                                     \
+ public:                                                                      \
   using __base_t = typename tref::imp::get_parent<ZTrefRemoveParen(T)>::type; \
   ZTrefTypeCommon(T, __base_t, meta);
 

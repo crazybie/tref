@@ -443,6 +443,16 @@ void TestEnum() {
 //////////////////////////////////////////////////////////////////////////
 // reflection of hierarchy with custom meta
 
+struct Meta {
+  const char* desc;
+
+  std::string to_string() {
+    std::ostringstream o;
+    o << "desc:" << desc;
+    return o.str();
+  }
+};
+
 template <typename T>
 constexpr bool hasSubclass(string_view name) {
   auto found = false;
@@ -514,16 +524,6 @@ void dumpDetails() {
     return true;
   });
 }
-
-struct Meta {
-  const char* desc;
-
-  std::string to_string() {
-    std::ostringstream o;
-    o << "desc:" << desc;
-    return o.str();
-  }
-};
 
 template <typename T>
 struct MetaNumber : Meta {
