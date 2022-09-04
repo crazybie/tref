@@ -455,7 +455,7 @@ struct get_parent<T, void_t<typename T::__parent_t>> {
       ZTrefAllowSemicolon(ZTrefRemoveParen(T))
 
 // fix lint issue: `TrefSubType(T);` : empty statement.
-#define ZTrefAllowSemicolon(...) using __ = std::void_t<__VA_ARGS__>
+#define ZTrefAllowSemicolon(...) using zUnused = std::void_t<__VA_ARGS__>
 
 //
 
