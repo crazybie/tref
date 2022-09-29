@@ -125,7 +125,8 @@ constexpr Overload<Args...> overload_v{};
 
 template <typename... Meta>
 struct Metas : Meta... {
-  constexpr explicit Metas(Meta... m) : Meta(m)... {}
+  constexpr explicit Metas(Meta... m)
+      : Meta(m)... {}
 };
 
 //  common macros
@@ -156,9 +157,9 @@ struct Metas : Meta... {
 
 // macro version of map
 
-#define ZTrefMap(f, arg1, ...)                                         \
-  ZTrefMsvcExpand(ZTrefDelay(ZTrefChooseMap, ZTrefCount(__VA_ARGS__))( \
-      f, arg1, __VA_ARGS__))
+#define ZTrefMap(f, arg1, ...)               \
+  ZTrefMsvcExpand(ZTrefDelay(ZTrefChooseMap, \
+                             ZTrefCount(__VA_ARGS__))(f, arg1, __VA_ARGS__))
 
 #define ZTrefChooseMap(N) ZTrefMap##N
 
@@ -450,8 +451,9 @@ struct get_parent<T, void_t<typename T::__parent_t>> {
 // NOTE: can't put into class:
 // 1. template overloads to increase the id will not work on clang.
 // 1. friend function unrelated to the current class may be removed by clang.
-#define ZTrefSubTypeImp(T, Base)                                                       \
-  ZTrefStatePush(Base, tref::imp::SubclassTag, tref::imp::Type<ZTrefRemoveParen(T)>{}) \
+#define ZTrefSubTypeImp(T, Base)                         \
+  ZTrefStatePush(Base, tref::imp::SubclassTag,           \
+                 tref::imp::Type<ZTrefRemoveParen(T)>{}) \
       ZTrefAllowSemicolon(ZTrefRemoveParen(T))
 
 // fix lint issue: `TrefSubType(T);` : empty statement.
@@ -531,7 +533,8 @@ struct get_parent<T, void_t<typename T::__parent_t>> {
 
 struct EnumValueConvertor {
   template <typename T>
-  constexpr explicit EnumValueConvertor(T v) : value((size_t)v) {
+  constexpr explicit EnumValueConvertor(T v)
+      : value((size_t)v) {
     static_assert(sizeof(T) <= sizeof(value));
   }
 
@@ -639,7 +642,7 @@ constexpr auto enum_info() {
 #define ZTrefEnumImpWithMeta(T, meta, ...)                                   \
   constexpr auto _tref_enum_info(ZTrefRemoveParen(T)**) {                    \
     return tref::imp::EnumInfo<ZTrefRemoveParen(T), ZTrefCount(__VA_ARGS__), \
-                               decltype(meta), nullptr_t>{                   \
+                               decltype(meta), std::nullptr_t>{              \
         ZTrefStringify(ZTrefRemoveParen(T)),                                 \
         sizeof(ZTrefRemoveParen(T)),                                         \
         {ZTrefEnumStringize(T, __VA_ARGS__)},                                \
@@ -651,7 +654,7 @@ constexpr auto enum_info() {
 
 // (EnumValueConvertor)EnumType::EnumItem = EnumItemValue,
 #define ZTrefEnumStringizeSingle(P, E)                                         \
-  tref::imp::EnumItem<ZTrefRemoveParen(P), nullptr_t>{                         \
+  tref::imp::EnumItem<ZTrefRemoveParen(P), std::nullptr_t>{                    \
       tref::imp::enum_trim_name(#E),                                           \
       (tref::imp::EnumValueConvertor)ZTrefRemoveParen(P)::ZTrefRemoveParen(E), \
       nullptr},
