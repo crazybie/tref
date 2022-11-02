@@ -64,6 +64,7 @@ and more.
 - Reflect class-level and instance-level variables and functions.
 - Reflect nested member types.
 - Reflect overloaded functions.
+- Reflect private members.
 - Factory pattern support: introspect all sub-classes from one base class.
 
 ## Tested Platforms
