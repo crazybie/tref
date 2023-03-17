@@ -14,16 +14,16 @@ What I need is a reflection system that:
 
 #### Reflect subclass to support factory pattern. (none have direct support)
 - Games need to deserialize objects from game assets heavily.
-- The plugin system needs to create concrete plugin implementation to be registered into the game engine.
+- Plugin system needs to create concrete plugin implementation to be registered into the game engine.
 
 #### Should have simple syntax for both normal class and class template. (almost all are weak at supporting class template or with complex syntax)    
-- The RPC system of the server may have a huge number of types of data to transmit, we need an elegant solution to make things easier.    
-- The RPC system can utilize the reflection info to encode the data into a more efficient format.
+- RPC system of the server may have a huge number of types of data to transmit, we need an elegant solution to make things easier.    
+- RPC system can utilize the reflection info to encode the data into a more efficient format.
 - Good template-support is a bonus for better code-reuse.
 
 #### Must support custom meta-data for most types of reflected elements. (all others are weak at supporting this)
-- The ORM system of the server needs meta for database related attributes like primary key, unique keys, etc.
-- The game engine can export part of its API to other system (e.g. the script engine) by specifying tags.
+- ORM system of the server needs meta for database related attributes like primary key, unique keys, etc.
+- Game engine can export part of its API to other system (e.g. the script engine) by specifying tags.
 - Allow better visual-editing for the exported game structures in the engine editor.
 
 #### Must support enum with custom values. (some library support this but with complex syntax)
