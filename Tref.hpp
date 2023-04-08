@@ -331,7 +331,7 @@ struct FieldInfo {
 
   // Possible values:
   // 1. Address of member variables & functions
-  // 2. Type<T> for member type T: use decltype(value)::type to retrive it.
+  // 2. Type<T> for member type T: use decltype(value)::type to retrieve it.
   T    value;
   Meta meta;
 
