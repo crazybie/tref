@@ -30,11 +30,10 @@ static_assert(class_info<TypeA>().each_field([](auto info, int) {
   return info.name == "val" && is_same_v<enclosing_class_t<mem_t>, TypeA> &&
          is_same_v<member_t<mem_t>, decltype(TypeA{}.val)>;
 }));
-static_assert(class_info<TypeA>().get_field_index("val") == 1);
-static_assert(class_info<TypeA>().get_field<1>().index == 1);
-static_assert(class_info<TypeA>().get_field<1>().name == "val");
+static_assert(class_info<TypeA>().get_field_index("val") == 0);
+static_assert(class_info<TypeA>().get_field<0>().name == "val");
 static_assert(
-    is_same_v<decltype(class_info<TypeA>().get_field<1>())::member_t, int>);
+    is_same_v<decltype(class_info<TypeA>().get_field<0>())::member_t, int>);
 
 //////////////////////////////
 // subclass
