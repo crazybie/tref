@@ -136,7 +136,7 @@ static_assert(has_base_class_v<TypeB>);
 static_assert(is_same_v<base_of_t<TypeB>, TypeA>);
 static_assert(is_same_v<decltype(class_info<TypeB>())::base_t, TypeA>);
 static_assert(class_info<TypeB>().each_field([](auto info, int level) {
-  // exclude members of imp class
+  // exclude members of base class
   if (level != 0)
     return true;
 
@@ -159,7 +159,7 @@ struct TempType : TypeB {
 
 static_assert(class_info<TempType<int>>().name == "TempType");
 static_assert(class_info<TempType<int>>().each_field([](auto info, int lv) {
-  // exclude members of imp class.
+  // exclude members of base class.
   if (lv != 0)
     return true;
   using mem_t = decltype(info.value);
