@@ -75,6 +75,11 @@ constexpr bool tuple_for_each_idx(T&& tp, Fn&& fn, index_sequence<Idx...>) {
   return (forward<Fn>(fn)(get<Idx>(forward<T>(tp))) && ...);
 }
 
+template <typename D, typename S, size_t... I>
+constexpr auto tuple_convert(S&& s, index_sequence<I...>) {
+  return make_tuple(tuple_element_t<I, D>{get<I>(forward<S>(s))}...);
+}
+
 // member pointer trait
 
 template <class C>
@@ -839,6 +844,7 @@ using imp::is_reflected_v;
 using imp::member_t;
 using imp::Metas;
 using imp::overload_v;
+using imp::tuple_convert;
 using imp::tuple_for_each;
 
 #define TrefType ZTrefType
