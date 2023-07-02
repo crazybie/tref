@@ -142,6 +142,7 @@ constexpr Overload<Args...> overload_v{};
 
 template <typename... Meta>
 struct Metas : Meta... {
+  using Meta::Meta...;
   constexpr explicit Metas(Meta... m)
       : Meta(m)... {}
 };
