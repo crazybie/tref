@@ -1,48 +1,63 @@
 # Tref: A *T*iny compile-time *ref*lection system.
 
 ## Motivation
-I am a C++ game developer, I have been hunting for a powerful and easy to use reflection library for a long time, but none of them make me happy completely(even the new proposal). 
+
+I am a C++ game developer, I have been hunting for a powerful and easy to use reflection library for a long time, but
+none of them make me happy completely(even the new proposal).
 
 What I need is a reflection system that:
 
 #### Must be efficient for performance critical scenarios.
+
 - Must not be as slow as the implementation of C# or Java or Golang.
 - Should utilize the powerful compiling-time-executing feature of C++.
 
 #### Reflect the field name. (magic_get excluded)
+
 - Needed by JSON reader & writer.
 
 #### Reflect subclass to support factory pattern. (none have direct support)
-- Games need to deserialize objects from game assets heavily.
-- Plugin system needs to create concrete plugin implementation to be registered into the game engine.
 
-#### Should have simple syntax for both normal class and class template. (almost all are weak at supporting class template or with complex syntax)    
-- RPC system of the server may have a huge number of types of data to transmit, we need an elegant solution to make things easier.    
-- RPC system can utilize the reflection info to encode the data into a more efficient format.
+- Games need to deserialize objects from game assets heavily.
+- The plugin system needs to create concrete plugin implementation to be registered into the game engine.
+
+#### Should have simple syntax for both normal class and class template. (almost all are weak at supporting class template or with complex syntax)
+
+- The RPC system of the server may have a huge number of types of data to transmit, we need an elegant solution to make
+  things easier.
+- The RPC system can utilize the reflection info to encode the data into a more efficient format.
 - Good template-support is a bonus for better code-reuse.
 
 #### Must support custom meta-data for most types of reflected elements. (all others are weak at supporting this)
-- ORM system of the server needs meta for database related attributes like primary key, unique keys, etc.
-- Game engine can export part of its API to other system (e.g. the script engine) by specifying tags.
+
+- The ORM system of the server needs meta for database related attributes like primary key, unique keys, etc.
+- The game engine can export part of its API to other system (e.g. the script engine) by specifying tags.
 - Allow better visual-editing for the exported game structures in the engine editor.
 
 #### Must support enum with custom values. (some library support this but with complex syntax)
+
 - No one can guarantee all enums are started from zero and increased by one.
 
 #### Better to support meta for enum items. (almost none support this)
+
 - Error codes defined as enum can have localization info attacked for translation.
 - You can even attach a function to the meta of enum item for data-driven like static-dispatching pattern.
 
 #### Easily support reflecting 3rd-party code. (Other libraries are weak at supporting this)
-- A large project definitely integrates many 3rd libraries, keeps the wrapper layer thin and small and programmers will thank you so much.
+
+- A large project definitely integrates many 3rd libraries, keeps the wrapper layer thin and small and programmers will
+  thank you so much.
 
 #### No extra preprocessor tools for the building system. (I hate struggling with building system)
+
 - Extra tools usually slow down the building system under the hood.
 
-#### Should not brings in code bloat and slow down the compiling too much. 
+#### Should not brings in code bloat and slow down the compiling too much.
+
 - This is very important to a basic facility.
-    
+
 So for summary, systems and design that are already known to strongly benefit from reflection are:
+
 - Factory pattern.
 - Data-driven design.
 - Serialization system.
@@ -50,9 +65,10 @@ So for summary, systems and design that are already known to strongly benefit fr
 - ORM system.
 - Scripting system.
 - Visual-Editing authoring tools.
-and more.
+  and more.
 
 ## Features
+
 - Simpler syntax than other reflection libraries.
 - Only utilize C++17 language features, no external preprocessor tools needed.
 - Super lightweight: only one small header file with no extra dependencies except STL.
@@ -64,14 +80,15 @@ and more.
 - Reflect class-level and instance-level variables and functions.
 - Reflect nested member types.
 - Reflect overloaded functions.
-- Reflect private members.
-- Factory pattern support: introspect all sub-classes from one base class.
+- Factory pattern support: introspect all sub-classes from one imp class.
 
 ## Tested Platforms
+
 - MSVC 2017 (conformance mode & non-conformance mode)
 - Clang 10
 
 ## TODO
+
 - Reflect function details, e.g. arguments and return type.
 - Specify a new name for the reflected element.
 - STL support.
@@ -79,6 +96,7 @@ and more.
 ## Examples
 
 - simple class
+
 ```c++
 struct TypeA {
   TrefType(TypeA);
@@ -104,6 +122,7 @@ static_assert(
 ```
 
 - subclass
+
 ```c++
 
 struct TypeB : TypeA {
@@ -128,6 +147,7 @@ static_assert(class_info<TypeB>().each_field([](auto info, int level) {
 ```
 
 - template subclass
+
 ```c++
 template <typename T>
 struct TempType : TypeB {
@@ -150,6 +170,7 @@ static_assert(class_info<TempType<int>>().each_field([](auto info, int lv) {
 ```
 
 - class meta
+
 ```c++
 struct FakeMeta {
   int foo;
@@ -169,6 +190,7 @@ static_assert(class_info<ClassWithMeta>().meta.bar == 22);
 ```
 
 - function overloading
+
 ```c++
 struct OverloadingTest {
   TrefType(OverloadingTest);
@@ -209,6 +231,7 @@ static_assert(class_info<OverloadingTest>().each_field([](auto info, int) {
 ```
 
 - global enum
+
 ```c++
 struct FakeEnumMeta {
   int foo;
@@ -240,6 +263,7 @@ static_assert(enum_info<EnumA>().each_item([](auto info) {
 ```
 
 - external enum
+
 ```c++
 enum class ExternalEnum { Value1 = 1, Value2 = Value1 + 4 };
 
@@ -251,6 +275,7 @@ static_assert(enum_info<ExternalEnum>().items.size() == 2);
 ```
 
 - meta for enum values
+
 ```c++
 struct CustomEnumItem {
   string_view desc;
@@ -278,6 +303,7 @@ static_assert(enum_info<EnumValueMetaTest>().items[1].meta.otherMetaData == 22);
 ```
 
 - static dispatching sample.
+
 ```c++
 enum class TestEnumStaticDispatching;
 constexpr auto processA(TestEnumStaticDispatching v) {
@@ -297,6 +323,7 @@ static_assert([] {
 ```
 
 - factory pattern
+
 ```c++
 
 struct Base {
@@ -362,6 +389,7 @@ void dumpTree() {
 ```
 
 - deserialize from file
+
 ```c++
 
 template <typename T,
@@ -427,6 +455,7 @@ bool operator>>(JsonReader& in, std::unique_ptr<T>& p) {
 - check TrefTest.cpp for more examples.
 
 ## Thanks To
+
 - https://woboq.com/blog/verdigris-implementation-tricks.html
 - https://www.codeproject.com/Articles/1002895/Clean-Reflective-Enums-Cplusplus-Enum-to-String-wi
 

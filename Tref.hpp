@@ -20,6 +20,7 @@ COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
+
 #ifndef TREF_H
 #define TREF_H
 #pragma once
@@ -48,9 +49,9 @@ namespace imp {
 using namespace std;
 
 //////////////////////////////////////////////////////////////////////////
-//
-// Common facility
-//
+///
+/// Common facility
+///
 //////////////////////////////////////////////////////////////////////////
 
 template <typename T>
@@ -72,6 +73,11 @@ constexpr bool tuple_for_each(T&& tp, Fn&& fn) {
 template <typename T, typename Fn, size_t... Idx>
 constexpr bool tuple_for_each_idx(T&& tp, Fn&& fn, index_sequence<Idx...>) {
   return (forward<Fn>(fn)(get<Idx>(forward<T>(tp))) && ...);
+}
+
+template <typename D, typename S, size_t... I>
+constexpr auto tuple_convert(S&& s, index_sequence<I...>) {
+  return make_tuple(tuple_element_t<I, D>{get<I>(forward<S>(s))}...);
 }
 
 // member pointer trait
@@ -136,6 +142,7 @@ constexpr Overload<Args...> overload_v{};
 
 template <typename... Meta>
 struct Metas : Meta... {
+  using Meta::Meta...;
   constexpr explicit Metas(Meta... m)
       : Meta(m)... {}
 };
@@ -245,9 +252,9 @@ struct Metas : Meta... {
       15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1))
 
 //////////////////////////////////////////////////////////////////////////
-//
-// Core facility
-//
+///
+/// Core facility
+///
 //////////////////////////////////////////////////////////////////////////
 
 template <int N = 255>
@@ -265,7 +272,6 @@ constexpr auto invalid_index = 0;
 template <typename C, typename Tag>
 tuple<Id<invalid_index>> _tref_state(C**, Tag, Id<0> id);
 
-// use macro to delay the evaluation
 #define ZTrefStateCnt(C, Tag)                                                \
   std::tuple_element_t<0,                                                    \
                        decltype(_tref_state((ZTrefRemoveParen(C)**)0, Tag(), \
@@ -308,9 +314,9 @@ constexpr auto get_all_state() {
 }
 
 //////////////////////////////////////////////////////////////////////////
-//
-// class reflection
-//
+///
+/// class reflection
+///
 //////////////////////////////////////////////////////////////////////////
 
 struct DummyBase;
@@ -338,6 +344,11 @@ constexpr auto class_info() {
 template <typename T>
 constexpr auto has_base_class_v =
     is_reflected_v<T> && !std::is_same_v<ZTrefBaseOf(T), DummyBase>;
+
+template <typename TP, size_t... I>
+constexpr auto unpack_subclass(TP, index_sequence<I...>) {
+  return tuple_cat(class_info<typename tuple_element_t<I, TP>::type>().get_subclasses()...);
+}
 
 // Meta for Member
 
@@ -417,16 +428,18 @@ struct ClassInfo {
     });
   }
 
-  constexpr auto get_field_index(string_view field_name) const {
-    int idx = invalid_index;
-    each_field([&](auto info, int) {
-      if (info.name == field_name) {
-        idx = info.index - 1;
+  constexpr auto get_field_index(string_view name) const {
+    int  idx = 0;
+    bool found = false;
+    tuple_for_each(get_fields(), [&](auto f) {
+      if (f.name == name) {
+        found = true;
         return false;
       }
+      idx++;
       return true;
     });
-    return idx;
+    return found ? idx : -1;
   }
 
   template <size_t index>
@@ -446,9 +459,75 @@ struct ClassInfo {
     });
   }
 
+  constexpr auto get_subclass_index(string_view name) const {
+    int  idx = 0;
+    bool found = false;
+    tuple_for_each(get_subclasses(), [&](auto t) {
+      if (class_info<typename decltype(t)::type>().name == name) {
+        found = true;
+        return false;
+      }
+      idx++;
+      return true;
+    });
+    return found ? idx : -1;
+  }
+
+  template <typename Sub>
+  constexpr auto get_subclass_index() const {
+    int  idx = 0;
+    bool found = false;
+    tuple_for_each(get_subclasses(), [&](auto t) {
+      using S = typename decltype(t)::type;
+      if (is_same_v<Sub, S>) {
+        found = true;
+        return false;
+      }
+      idx++;
+      return true;
+    });
+    return found ? idx : -1;
+  }
+
+  template <size_t index>
+  constexpr auto get_subclass() const {
+    return get<index>(get_subclasses());
+  }
+
+  template <typename F>
+  constexpr auto get_subclass(int index, F&& f) const {
+    int  idx = 0;
+    bool found = false;
+    tuple_for_each(get_subclasses(), [&](auto t) {
+      if (idx == index) {
+        f(t);
+        return false;
+      }
+      idx++;
+      return true;
+    });
+    return found;
+  }
+
+  constexpr auto get_subclasses() const {
+    constexpr auto f = get_all_state<T, SubclassTag>();
+    constexpr int  cnt = tuple_size_v<decltype(f)>;
+    constexpr auto idx = make_index_sequence<cnt>();
+    if constexpr (cnt) {
+      auto sub = unpack_subclass(f, idx);
+      if constexpr (tuple_size_v<decltype(sub)>) {
+        return tuple_cat(f, sub);
+      } else {
+        return f;
+      }
+    } else {
+      return f;
+    }
+  }
+
   template <typename FilterMeta, typename F>
   constexpr bool each_subclass_with_meta(F&& f) const {
-    return each_subclass<FieldTag>([&](auto info, int level) {
+    return each_subclass([&](auto info, int level) {
       if constexpr (std::is_convertible_v<decltype(info.meta), FilterMeta>) {
         return f(info, level);
       }
@@ -457,7 +536,7 @@ struct ClassInfo {
   }
 
   // Iterate through the member types.
-  // @param F: [](FieldInfo info) -> bool, return false to stop the
+  // @param F: [](Type info) -> bool, return false to stop the
   // iterating.
   template <typename F>
   constexpr bool each_member_type(F&& f) const {
@@ -475,6 +554,11 @@ struct ClassInfo {
   }
 };
 
+template <typename T>
+constexpr auto each_fields(auto f) {
+  return tuple_for_each(class_info<T>().get_fields(), f);
+}
+
 #define ZTrefClassMetaImp(T, Base, meta)                              \
   constexpr auto _tref_class_info(ZTrefRemoveParen(T)**) {            \
     return tref::imp::ClassInfo{                                      \
@@ -489,9 +573,9 @@ struct ClassInfo {
   ZTrefStatePush(T, Tag, tref::imp::FieldInfo{id.value, name, val, meta})
 
 //////////////////////////////////////////////////////////////////////////
-//
-// macros for class reflection
-//
+///
+/// macros for class reflection
+///
 //////////////////////////////////////////////////////////////////////////
 
 // sub type
@@ -506,6 +590,7 @@ struct get_parent<T, void_t<typename T::__parent_t>> {
   using type = typename T::__parent_t;
 };
 
+// NOTE: needed only when you want to iterate all children from base class.
 #define ZTrefSubType(T) \
   ZTrefSubTypeImp(T, (typename ZTrefRemoveParen(T)::__base_t))
 
@@ -587,9 +672,9 @@ struct get_parent<T, void_t<typename T::__parent_t>> {
   friend ZTrefMemberTypeWithMetaImp(T, meta)
 
 //////////////////////////////////////////////////////////////////////////
-//
-// enum reflection
-//
+///
+/// enum reflection
+///
 //////////////////////////////////////////////////////////////////////////
 
 struct EnumValueConvertor {
@@ -815,9 +900,9 @@ struct Flags {
 }  // namespace imp
 
 //////////////////////////////////////////////////////////////////////////
-//
-// public APIs
-//
+///
+/// public APIs
+///
 //////////////////////////////////////////////////////////////////////////
 
 #define TrefHasTref ZTrefHasTref
@@ -825,6 +910,7 @@ struct Flags {
 
 using imp::class_info;
 using imp::ClassInfo;
+using imp::each_fields;
 using imp::enclosing_class_t;
 using imp::FieldInfo;
 using imp::func_trait;
@@ -833,6 +919,7 @@ using imp::is_reflected_v;
 using imp::member_t;
 using imp::Metas;
 using imp::overload_v;
+using imp::tuple_convert;
 using imp::tuple_for_each;
 
 #define TrefType ZTrefType
@@ -847,8 +934,9 @@ using imp::tuple_for_each;
 
 //////////////////////////
 // Reflect external types
-// NOTE: not support template.
+// NOTE: do not support template.
 //////////////////////////
+
 #define TrefNoBase tref::imp::DummyBase
 #define TrefExternalTypeWithMeta ZTrefClassMetaImp
 #define TrefExternalFieldWithMeta ZTrefFieldWithMeta2Imp
@@ -878,4 +966,5 @@ using imp::string_to_enum;
 #define TrefExternalEnumWithMetaEx ZTrefEnumImpWithMetaEx
 
 }  // namespace tref
+
 #endif
