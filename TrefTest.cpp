@@ -44,6 +44,7 @@ struct TypeB : TypeA {
   float foo;
   TrefField(foo);
 };
+TrefSubType(TypeB);
 
 static_assert(has_base_class_v<TypeB>);
 static_assert(is_same_v<TrefBaseOf(TypeB), TypeA>);
@@ -62,6 +63,11 @@ static_assert(class_info<TypeB>().each_field([](auto info, int lv) {
     return info.name == "foo";
   return lv == 1 && info.name == "val";
 }));
+static_assert(class_info<TypeB>().get_field_index("val") == 0);
+static_assert(class_info<TypeB>().get_field_index("foo") == 1);
+static_assert(class_info<TypeA>().get_subclass_index("TypeB") == 0);
+static_assert(class_info<TypeA>().get_subclass_index<TypeB>() == 0);
+static_assert(is_same_v<decltype(class_info<TypeA>().get_subclass<0>())::type, TypeB>);
 
 //////////////////////////////
 // template subclass
@@ -102,7 +108,7 @@ static_assert(!is_same_v<TrefBaseOf(SubTypeB), TempType<int>>);
 // class meta
 
 struct FakeMeta {
-  int foo;
+  int   foo;
   float bar;
 };
 
@@ -293,7 +299,8 @@ static_assert(enum_info<EnumA>().each_item([](auto info) {
 
 // external enum
 
-enum class ExternalEnum { Value1 = 1, Value2 = Value1 + 4 };
+enum class ExternalEnum { Value1 = 1,
+                          Value2 = Value1 + 4 };
 
 TrefExternalEnum(ExternalEnum, Value1, Value2);
 
@@ -305,7 +312,8 @@ static_assert(enum_info<ExternalEnum>().items.size() == 2);
 
 template <typename, typename>
 struct TestExternalTemplateInnerEnum {
-  enum class InnerEnum { ValX = 1, ValY = ValX + 10 };
+  enum class InnerEnum { ValX = 1,
+                         ValY = ValX + 10 };
 };
 
 // enum value is not necessary to external enum, here just for test.
@@ -349,7 +357,7 @@ static_assert(class_info<DataWithEnumMemType>().each_member_type([](auto info, i
 struct CustomEnumItem {
   string_view desc;
   string_view comment;
-  int otherMetaData = 0;
+  int         otherMetaData = 0;
 };
 
 TrefEnumEx(EnumValueMetaTest,
@@ -557,7 +565,8 @@ struct MetaValidatableFunc {
   using Validate = bool (*)(T&, Args...);
   Validate validate = nullptr;
 
-  constexpr MetaValidatableFunc(Validate vv) : validate(vv) {}
+  constexpr MetaValidatableFunc(Validate vv)
+      : validate(vv) {}
   std::string to_string() { return ""; };
 };
 
@@ -587,22 +596,22 @@ struct Data : Base {
   TrefFieldWithMeta(name, Meta{"entity name"});
 };
 
-struct Child : Data<int,void> {
+struct Child : Data<int, void> {
   TrefType(Child);
 
   float z;
   TrefField(z);
 };
-TrefSubType((Data<int,void>));
+TrefSubType((Data<int, void>));
 TrefSubType(Child);
 
-struct Child2 : Data<float,void> {
+struct Child2 : Data<float, void> {
   TrefType(Child2);
 
   float zz;
   TrefField(zz);
 };
-TrefSubType((Data<float,void>));
+TrefSubType((Data<float, void>));
 TrefSubType(Child2);
 
 struct SubChild : Child2 {
@@ -702,8 +711,8 @@ TrefSubType(SubChildOfTempSubChild3);
 // reflection for external type
 
 struct ExternalData : SubChild {
-  int age;
-  int age2;
+  int   age;
+  int   age2;
   float money;
 };
 

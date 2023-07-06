@@ -345,6 +345,11 @@ template <typename T>
 constexpr auto has_base_class_v =
     is_reflected_v<T> && !std::is_same_v<ZTrefBaseOf(T), DummyBase>;
 
+template <typename TP, size_t... I>
+constexpr auto unpack_subclass(TP, index_sequence<I...>) {
+  return tuple_cat(class_info<typename tuple_element_t<I, TP>::type>().get_subclasses()...);
+}
+
 // Meta for Member
 
 template <typename T, typename Meta>
@@ -423,16 +428,18 @@ struct ClassInfo {
     });
   }
 
-  constexpr auto get_field_index(string_view field_name) const {
-    int idx = invalid_index;
-    each_field([&](auto info, int) {
-      if (info.name == field_name) {
-        idx = info.index - 1;
+  constexpr auto get_field_index(string_view name) const {
+    int  idx = 0;
+    bool found = false;
+    tuple_for_each(get_fields(), [&](auto f) {
+      if (f.name == name) {
+        found = true;
         return false;
       }
+      idx++;
       return true;
     });
-    return idx;
+    return found ? idx : -1;
   }
 
   template <size_t index>
@@ -452,9 +459,75 @@ struct ClassInfo {
     });
   }
 
+  constexpr auto get_subclass_index(string_view name) const {
+    int  idx = 0;
+    bool found = false;
+    tuple_for_each(get_subclasses(), [&](auto t) {
+      if (class_info<typename decltype(t)::type>().name == name) {
+        found = true;
+        return false;
+      }
+      idx++;
+      return true;
+    });
+    return found ? idx : -1;
+  }
+
+  template <typename Sub>
+  constexpr auto get_subclass_index() const {
+    int  idx = 0;
+    bool found = false;
+    tuple_for_each(get_subclasses(), [&](auto t) {
+      using S = typename decltype(t)::type;
+      if (is_same_v<Sub, S>) {
+        found = true;
+        return false;
+      }
+      idx++;
+      return true;
+    });
+    return found ? idx : -1;
+  }
+
+  template <size_t index>
+  constexpr auto get_subclass() const {
+    return get<index>(get_subclasses());
+  }
+
+  template <typename F>
+  constexpr auto get_subclass(int index, F&& f) const {
+    int  idx = 0;
+    bool found = false;
+    tuple_for_each(get_subclasses(), [&](auto t) {
+      if (idx == index) {
+        f(t);
+        return false;
+      }
+      idx++;
+      return true;
+    });
+    return found;
+  }
+
+  constexpr auto get_subclasses() const {
+    constexpr auto f = get_all_state<T, SubclassTag>();
+    constexpr int  cnt = tuple_size_v<decltype(f)>;
+    constexpr auto idx = make_index_sequence<cnt>();
+    if constexpr (cnt) {
+      auto sub = unpack_subclass(f, idx);
+      if constexpr (tuple_size_v<decltype(sub)>) {
+        return tuple_cat(f, sub);
+      } else {
+        return f;
+      }
+    } else {
+      return f;
+    }
+  }
+
   template <typename FilterMeta, typename F>
   constexpr bool each_subclass_with_meta(F&& f) const {
-    return each_subclass<FieldTag>([&](auto info, int level) {
+    return each_subclass([&](auto info, int level) {
       if constexpr (std::is_convertible_v<decltype(info.meta), FilterMeta>) {
         return f(info, level);
       }
@@ -517,6 +590,7 @@ struct get_parent<T, void_t<typename T::__parent_t>> {
   using type = typename T::__parent_t;
 };
 
+// NOTE: needed only when you want to iterate all children from base class.
 #define ZTrefSubType(T) \
   ZTrefSubTypeImp(T, (typename ZTrefRemoveParen(T)::__base_t))
 
