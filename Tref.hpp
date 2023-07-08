@@ -868,34 +868,14 @@ constexpr auto enum_to_string(T v) {
 template <typename T>
 constexpr auto string_to_enum(string_view s, T default_) {
   static_assert(is_enum_v<T>);
-  for (auto& e : enum_info<T>().items) {
+  constexpr auto info = enum_info<T>();
+  for (auto& e : info.items) {
     if (s == e.name) {
       return e.value;
     }
   }
   return default_;
 }
-
-template <typename T, typename Storage = unsigned int>
-struct Flags {
-  static_assert(std::is_enum_v<T>);
-  Storage value = 0;
-
-  constexpr Flags() = default;
-  constexpr void clear() { value = 0; }
-  constexpr bool hasFlag(T e) {
-    assert(e < sizeof(value) * 8);
-    return (value & (1 << static_cast<Storage>(e))) != 0;
-  }
-  constexpr void setFlag(T e) {
-    assert(e < sizeof(value) * 8);
-    value |= (1 << static_cast<Storage>(e));
-  }
-  constexpr void clearFlag(T e) {
-    assert(e < sizeof(value) * 8);
-    value &= ~(1 << static_cast<Storage>(e));
-  }
-};
 
 }  // namespace imp
 
@@ -947,7 +927,6 @@ using imp::tuple_for_each;
 
 using imp::enum_info;
 using imp::enum_to_string;
-using imp::Flags;
 using imp::string_to_enum;
 
 // ex version support meta for enum items.
