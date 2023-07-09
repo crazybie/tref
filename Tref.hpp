@@ -554,8 +554,8 @@ struct ClassInfo {
   }
 };
 
-template <typename T>
-constexpr auto each_fields(auto f) {
+template <typename T, typename F>
+constexpr auto each_fields(F&& f) {
   return tuple_for_each(class_info<T>().get_fields(), f);
 }
 
