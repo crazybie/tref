@@ -337,6 +337,9 @@ constexpr auto class_info() {
   return _tref_class_info((T**)0);
 }
 
+template <typename T>
+constexpr auto class_info_v = class_info<T>();
+
 // Use macro to delay the evaluation. (for non-conformance mode of MSVC)
 #define ZTrefBaseOf(T) \
   typename decltype(tref::imp::class_info<ZTrefRemoveParen(T)>())::base_t
@@ -559,6 +562,24 @@ constexpr auto each_fields(F&& f) {
   return tuple_for_each(class_info<T>().get_fields(), f);
 }
 
+template <typename T, typename F>
+constexpr auto each_subclass(F&& f) {
+  return class_info_v<T>.each_subclass(f);
+}
+
+template <typename T, typename S, typename = std::enable_if_t<std::is_base_of_v<T, S>>>
+constexpr auto subclass_id = class_info_v<T>.template get_subclass_index<S>();
+
+template <typename T, typename... Args>
+T* create_subclass(int subclassId, Args&&... args) {
+  T* ret{};
+  class_info_v<T>.template get_subclass(subclassId, [&](auto c) {
+    using C = typename decltype(c)::type;
+    ret = new C(std::forward<Args>(args)...);
+  });
+  return ret;
+};
+
 #define ZTrefClassMetaImp(T, Base, meta)                              \
   constexpr auto _tref_class_info(ZTrefRemoveParen(T)**) {            \
     return tref::imp::ClassInfo{                                      \
@@ -771,6 +792,9 @@ constexpr auto enum_info() {
   return _tref_enum_info((T**)0);
 }
 
+template <typename T>
+constexpr auto enum_info_v = enum_info<T>();
+
 // Use it out of class.
 #define ZTrefEnum(T, ...) ZTrefEnumWithMeta(T, nullptr, __VA_ARGS__)
 #define ZTrefEnumWithMeta(T, meta, ...) \
@@ -857,7 +881,7 @@ constexpr string_view enum_trim_name(string_view s) {
 template <typename T>
 constexpr auto enum_to_string(T v) {
   static_assert(is_enum_v<T>);
-  for (auto& e : enum_info<T>().items) {
+  for (auto& e : enum_info_v<T>.items) {
     if (e.value == v) {
       return e.name;
     }
@@ -868,8 +892,7 @@ constexpr auto enum_to_string(T v) {
 template <typename T>
 constexpr auto string_to_enum(string_view s, T default_) {
   static_assert(is_enum_v<T>);
-  constexpr auto info = enum_info<T>();
-  for (auto& e : info.items) {
+  for (auto& e : enum_info_v<T>.items) {
     if (s == e.name) {
       return e.value;
     }
@@ -889,9 +912,13 @@ constexpr auto string_to_enum(string_view s, T default_) {
 #define TrefVersion ZTrefVersion
 
 using imp::class_info;
+using imp::class_info_v;
 using imp::ClassInfo;
+using imp::create_subclass;
 using imp::each_fields;
+using imp::each_subclass;
 using imp::enclosing_class_t;
+using imp::enum_info_v;
 using imp::FieldInfo;
 using imp::func_trait;
 using imp::has_base_class_v;
@@ -899,6 +926,7 @@ using imp::is_reflected_v;
 using imp::member_t;
 using imp::Metas;
 using imp::overload_v;
+using imp::subclass_id;
 using imp::tuple_convert;
 using imp::tuple_for_each;
 
