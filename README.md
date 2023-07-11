@@ -1,5 +1,7 @@
 # Tref: A *T*iny compile-time *ref*lection system.
 
+中文[https://zhuanlan.zhihu.com/p/141996889]
+
 ## Motivation
 
 I am a C++ game developer, I have been hunting for a powerful and easy to use reflection library for a long time, but
