@@ -557,9 +557,12 @@ struct ClassInfo {
   }
 };
 
+template <typename T>
+constexpr auto class_fields_v = class_info_v<T>.get_fields();
+
 template <typename T, typename F>
-constexpr auto each_fields(F&& f) {
-  return tuple_for_each(class_info<T>().get_fields(), f);
+constexpr auto each_field(F&& f) {
+  return tuple_for_each(class_fields_v<T>, f);
 }
 
 template <typename T, typename F>
@@ -911,11 +914,12 @@ constexpr auto string_to_enum(string_view s, T default_) {
 #define TrefHasTref ZTrefHasTref
 #define TrefVersion ZTrefVersion
 
+using imp::class_fields_v;
 using imp::class_info;
 using imp::class_info_v;
 using imp::ClassInfo;
 using imp::create_subclass;
-using imp::each_fields;
+using imp::each_field;
 using imp::each_subclass;
 using imp::enclosing_class_t;
 using imp::enum_info_v;
