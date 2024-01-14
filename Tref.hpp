@@ -64,15 +64,15 @@ constexpr auto tail(index_sequence<L, R...>) {
   return index_sequence<R...>();
 }
 
+template <typename T, typename Fn, size_t... Idx>
+constexpr bool tuple_for_each_idx(T&& tp, Fn&& fn, index_sequence<Idx...>) {
+  return (std::forward<Fn>(fn)(get<Idx>(std::forward<T>(tp))) && ...);
+}
+
 template <typename T, typename Fn>
 constexpr bool tuple_for_each(T&& tp, Fn&& fn) {
   using Tp = remove_reference_t<T>;
   return tuple_for_each_idx(std::forward<T>(tp), std::forward<Fn>(fn), make_index_sequence<tuple_size_v<Tp>>());
-}
-
-template <typename T, typename Fn, size_t... Idx>
-constexpr bool tuple_for_each_idx(T&& tp, Fn&& fn, index_sequence<Idx...>) {
-  return (std::forward<Fn>(fn)(get<Idx>(std::forward<T>(tp))) && ...);
 }
 
 template <typename D, typename S, size_t... I>
