@@ -67,17 +67,17 @@ constexpr auto tail(index_sequence<L, R...>) {
 template <typename T, typename Fn>
 constexpr bool tuple_for_each(T&& tp, Fn&& fn) {
   using Tp = remove_reference_t<T>;
-  return tuple_for_each_idx(std::forward<T>(tp), forward<Fn>(fn), make_index_sequence<tuple_size_v<Tp>>());
+  return tuple_for_each_idx(std::forward<T>(tp), std::forward<Fn>(fn), make_index_sequence<tuple_size_v<Tp>>());
 }
 
 template <typename T, typename Fn, size_t... Idx>
 constexpr bool tuple_for_each_idx(T&& tp, Fn&& fn, index_sequence<Idx...>) {
-  return (forward<Fn>(fn)(get<Idx>(forward<T>(tp))) && ...);
+  return (std::forward<Fn>(fn)(get<Idx>(std::forward<T>(tp))) && ...);
 }
 
 template <typename D, typename S, size_t... I>
 constexpr auto tuple_convert(S&& s, index_sequence<I...>) {
-  return make_tuple(tuple_element_t<I, D>{get<I>(forward<S>(s))}...);
+  return make_tuple(tuple_element_t<I, D>{get<I>(std::forward<S>(s))}...);
 }
 
 // member pointer trait
@@ -882,18 +882,18 @@ constexpr string_view enum_trim_name(string_view s) {
 }
 
 template <typename T>
-constexpr auto enum_to_string(T v) {
+constexpr string_view enum_to_string(T v) {
   static_assert(is_enum_v<T>);
   for (auto& e : enum_info_v<T>.items) {
     if (e.value == v) {
       return e.name;
     }
   }
-  return string_view{};
+  return {};
 }
 
 template <typename T>
-constexpr auto string_to_enum(string_view s, T default_) {
+constexpr T string_to_enum(string_view s, T default_) {
   static_assert(is_enum_v<T>);
   for (auto& e : enum_info_v<T>.items) {
     if (s == e.name) {
