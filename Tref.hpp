@@ -633,10 +633,10 @@ struct get_parent<T, void_t<typename T::__parent_t>> {
 
 #define ZTrefTypeCommon(T, Base, meta) \
  private:                              \
-  using self_t = ZTrefRemoveParen(T);  \
+  using this_t = ZTrefRemoveParen(T);  \
                                        \
  public:                               \
-  using __parent_t = self_t;           \
+  using __parent_t = this_t;           \
   ZTrefClassMeta(T, Base, meta);
 
 // Just reflect the type.
@@ -650,7 +650,7 @@ struct get_parent<T, void_t<typename T::__parent_t>> {
 // reflect member variable & function
 
 #define ZTrefField1(t) ZTrefFieldWithMeta2(t, nullptr)
-#define ZTrefFieldWithMeta2(t, meta) ZTrefFieldWithMeta2Imp(self_t, t, meta)
+#define ZTrefFieldWithMeta2(t, meta) ZTrefFieldWithMeta2Imp(this_t, t, meta)
 #define ZTrefFieldWithMeta2Imp(T, t, meta)               \
   ZTrefPushFieldImp(T, tref::imp::FieldTag,              \
                     ZTrefStringify(ZTrefRemoveParen(t)), \
@@ -659,7 +659,7 @@ struct get_parent<T, void_t<typename T::__parent_t>> {
 // provide arguments for overloaded function
 #define ZTrefField2(t, sig) ZTrefFieldWithMeta3(t, sig, nullptr)
 #define ZTrefFieldWithMeta3(t, sig, meta) \
-  ZTrefFieldWithMeta3Imp(self_t, t, sig, meta)
+  ZTrefFieldWithMeta3Imp(this_t, t, sig, meta)
 
 #define ZTrefFieldWithMeta3Imp(T, t, sig, meta)                              \
   ZTrefPushFieldImp(                                                         \
@@ -687,7 +687,7 @@ struct get_parent<T, void_t<typename T::__parent_t>> {
 // reflect member type
 #define ZTrefMemberTypeImp(T) ZTrefMemberTypeWithMetaImp(T, nullptr)
 #define ZTrefMemberTypeWithMetaImp(T, meta)              \
-  ZTrefPushFieldImp(self_t, tref::imp::MemberTypeTag,    \
+  ZTrefPushFieldImp(this_t, tref::imp::MemberTypeTag,    \
                     ZTrefStringify(ZTrefRemoveParen(T)), \
                     tref::imp::Type<ZTrefRemoveParen(T)>{}, meta)
 

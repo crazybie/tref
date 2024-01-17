@@ -625,13 +625,13 @@ struct SubChild : Child2 {
   void func(int a) {
     printf("func called with arg:%d, subVal:%d\n", a, subVal);
   }
-  static bool func_validate(self_t& self, int a) {
+  static bool func_validate(this_t& self, int a) {
     printf("check if arg > 0: arg=%d", a);
     return a > 0;
   }
   TrefFieldWithMeta(func, MetaValidatableFunc{func_validate});
 
-  function<void(self_t&, int)> hookableFunc = [](self_t& self, int a) {
+  function<void(this_t&, int)> hookableFunc = [](this_t& self, int a) {
     printf("hookable func called with arg: %d, str:%s, subVal:%d\n", a, self.ff,
            self.subVal);
   };
@@ -669,7 +669,7 @@ void TestHookable() {
     if constexpr (std::is_base_of_v<MetaHookableFunc, decltype(info.meta)>) {
       auto v = info.value;
       auto f = s.*v;
-      s.*v = [ff = move(f)](SubChild& self, int a) {
+      s.*v = [ff = std::move(f)](SubChild& self, int a) {
         printf("before hook:%d\n", a);
         ff(self, a);
       };
