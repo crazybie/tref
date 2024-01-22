@@ -610,13 +610,13 @@ struct get_parent {
 };
 
 template <typename T>
-struct get_parent<T, void_t<typename T::__parent_t>> {
-  using type = typename T::__parent_t;
+struct get_parent<T, void_t<typename T::__base_of_child_t>> {
+  using type = typename T::__base_of_child_t;
 };
 
 // NOTE: needed only when you want to iterate all children from base class.
 #define ZTrefSubType(T) \
-  ZTrefSubTypeImp(T, (typename ZTrefRemoveParen(T)::__base_t))
+  ZTrefSubTypeImp(T, (typename ZTrefRemoveParen(T)::base_t))
 
 // NOTE: can't put into class:
 // 1. template overloads to increase the id will not work on clang.
@@ -636,16 +636,16 @@ struct get_parent<T, void_t<typename T::__parent_t>> {
   using this_t = ZTrefRemoveParen(T);  \
                                        \
  public:                               \
-  using __parent_t = this_t;           \
+  using __base_of_child_t = this_t;    \
   ZTrefClassMeta(T, Base, meta);
 
 // Just reflect the type.
 
 #define ZTrefType(T) ZTrefTypeWithMeta(T, nullptr)
-#define ZTrefTypeWithMeta(T, meta)                                            \
- public:                                                                      \
-  using __base_t = typename tref::imp::get_parent<ZTrefRemoveParen(T)>::type; \
-  ZTrefTypeCommon(T, __base_t, meta);
+#define ZTrefTypeWithMeta(T, meta)                                          \
+ public:                                                                    \
+  using base_t = typename tref::imp::get_parent<ZTrefRemoveParen(T)>::type; \
+  ZTrefTypeCommon(T, base_t, meta);
 
 // reflect member variable & function
 
@@ -741,7 +741,7 @@ struct EnumInfo {
   EnumItems<T, N, ItemMeta> items;
   Meta                      meta;
 
-  // @param f: [](string_view name, enum_t val)-> bool, return false to stop
+  // @param f: [](auto item)-> bool, return false to stop
   // the iterating.
   //
   // NOTE: the name.data() is not the name of the item, please use
