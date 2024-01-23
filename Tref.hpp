@@ -340,6 +340,9 @@ constexpr auto class_info() {
 template <typename T>
 constexpr auto class_info_v = class_info<T>();
 
+template <typename T>
+using class_info_t = decltype(class_info_v<T>);
+
 // Use macro to delay the evaluation. (for non-conformance mode of MSVC)
 #define ZTrefBaseOf(T) \
   typename decltype(tref::imp::class_info<ZTrefRemoveParen(T)>())::base_t
@@ -724,28 +727,35 @@ struct EnumValueConvertor {
 
 template <typename T, typename Meta>
 struct EnumItem {
-  string_view name;
-  T           value;
-  Meta        meta;
+  char name[255]{};
+  T    value;
+  Meta meta;
+
+  constexpr EnumItem(string_view name, T value, Meta meta)
+      : value{value}, meta{meta} {
+    std::copy(name.data(), name.data() + name.size(), this->name);
+  }
+
+  constexpr string_view name_view() {
+    return name;
+  }
 };
 
 template <typename T, size_t N, typename ItemMeta>
 using EnumItems = array<EnumItem<T, ItemMeta>, N>;
 
-template <typename T, size_t N, typename Meta, typename ItemMeta>
+template <typename T, typename BASE, size_t N, typename Meta, typename ItemMeta>
 struct EnumInfo {
   using enum_t = T;
+  using base_t = BASE;
 
   string_view               name;
-  size_t                    size = 0;
   EnumItems<T, N, ItemMeta> items;
+  size_t                    size;
   Meta                      meta;
 
   // @param f: [](auto item)-> bool, return false to stop
   // the iterating.
-  //
-  // NOTE: the name.data() is not the name of the item, please use
-  // string(name.data(), name.size()).
   template <typename F>
   constexpr auto each_item(F&& f) const {
     for (auto& e : items) {
@@ -780,46 +790,52 @@ struct EnumInfo {
   }
 };
 
-template <typename T, int N, typename Meta, typename ItemMeta>
+template <typename T, typename BASE, int N, typename Meta, typename ItemMeta>
 constexpr auto makeEnumInfo(string_view                      name,
-                            size_t                           size,
                             const EnumItems<T, N, ItemMeta>& items,
                             Meta                             meta) {
-  return EnumInfo<T, N, Meta, ItemMeta>{name, size, items, meta};
+  return EnumInfo<T, BASE, N, Meta, ItemMeta>{name, items, N, meta};
 }
 
-void* _tref_enum_info(void*);
+void _tref_enum_info(void*);
 
-template <typename T, typename = enable_if_t<is_enum_v<T>, bool>>
+template <typename T, typename = enable_if_t<is_enum_v<T>>>
 constexpr auto enum_info() {
   return _tref_enum_info((T**)0);
 }
 
 template <typename T>
+constexpr auto is_reflected_enum_v =
+    !std::is_same_v<decltype(_tref_enum_info((T**)0)), void>;
+
+template <typename T>
 constexpr auto enum_info_v = enum_info<T>();
 
+template <typename T>
+using enum_info_t = decltype(enum_info_v<T>);
+
 // Use it out of class.
-#define ZTrefEnum(T, ...) ZTrefEnumWithMeta(T, nullptr, __VA_ARGS__)
-#define ZTrefEnumWithMeta(T, meta, ...) \
-  enum class T { __VA_ARGS__ };         \
-  ZTrefEnumImpWithMeta(T, meta, __VA_ARGS__)
+#define ZTrefEnum(T, BASE, ...) ZTrefEnumWithMeta(T, BASE, nullptr, __VA_ARGS__)
+#define ZTrefEnumWithMeta(T, BASE, meta, ...) \
+  enum class T : BASE { __VA_ARGS__ };        \
+  ZTrefEnumImpWithMeta(T, BASE, meta, __VA_ARGS__)
 
 // Use it inside of class.
-#define ZTrefMemberEnum(T, ...) ZTrefMemberEnumWithMeta(T, 0, __VA_ARGS__)
-#define ZTrefMemberEnumWithMeta(T, meta, ...) \
-  enum class T { __VA_ARGS__ };               \
-  friend ZTrefEnumImpWithMeta(T, meta, __VA_ARGS__)
+#define ZTrefMemberEnum(T, BASE, ...) ZTrefMemberEnumWithMeta(T, BASE, 0, __VA_ARGS__)
+#define ZTrefMemberEnumWithMeta(T, BASE, meta, ...) \
+  enum class T : BASE { __VA_ARGS__ };              \
+  friend ZTrefEnumImpWithMeta(T, BASE, meta, __VA_ARGS__)
 
 // Reflect enum items of already defined enum.
-#define ZTrefEnumImp(T, ...) ZTrefEnumImpWithMeta(T, nullptr, __VA_ARGS__)
-#define ZTrefEnumImpWithMeta(T, meta, ...)                                   \
-  constexpr auto _tref_enum_info(ZTrefRemoveParen(T)**) {                    \
-    return tref::imp::EnumInfo<ZTrefRemoveParen(T), ZTrefCount(__VA_ARGS__), \
-                               decltype(meta), std::nullptr_t>{              \
-        ZTrefStringify(ZTrefRemoveParen(T)),                                 \
-        sizeof(ZTrefRemoveParen(T)),                                         \
-        {ZTrefEnumStringize(T, __VA_ARGS__)},                                \
-        std::move(meta)};                                                    \
+#define ZTrefEnumImp(T, BASE, ...) ZTrefEnumImpWithMeta(T, BASE, nullptr, __VA_ARGS__)
+#define ZTrefEnumImpWithMeta(T, BASE, meta, ...)                                   \
+  constexpr auto _tref_enum_info(ZTrefRemoveParen(T)**) {                          \
+    return tref::imp::EnumInfo<ZTrefRemoveParen(T), BASE, ZTrefCount(__VA_ARGS__), \
+                               decltype(meta), std::nullptr_t>{                    \
+        ZTrefStringify(ZTrefRemoveParen(T)),                                       \
+        {ZTrefEnumStringize(T, __VA_ARGS__)},                                      \
+        ZTrefCount(__VA_ARGS__),                                                   \
+        std::move(meta)};                                                          \
   }
 
 #define ZTrefEnumStringize(P, ...) \
@@ -835,29 +851,29 @@ constexpr auto enum_info_v = enum_info<T>();
 //////////////////////////////////////////////////////////////////////////
 // ex version support meta for enum items.
 
-#define ZTrefMemberEnumEx(T, ...) ZTrefMemberEnumWithMetaEx(T, 0, __VA_ARGS__)
-#define ZTrefMemberEnumWithMetaEx(T, meta, ...) \
-  ZTrefEnumDefineEnum2(T, __VA_ARGS__);         \
-  friend ZTrefEnumImpWithMetaEx(T, meta, __VA_ARGS__)
+#define ZTrefMemberEnumEx(T, BASE, ...) ZTrefMemberEnumWithMetaEx(T, BASE, 0, __VA_ARGS__)
+#define ZTrefMemberEnumWithMetaEx(T, BASE, meta, ...) \
+  ZTrefEnumDefineEnum2(T, BASE, __VA_ARGS__);         \
+  friend ZTrefEnumImpWithMetaEx(T, BASE, meta, __VA_ARGS__)
 
-#define ZTrefEnumEx(T, ...) ZTrefEnumWithMetaEx(T, nullptr, __VA_ARGS__)
+#define ZTrefEnumEx(T, BASE, ...) ZTrefEnumWithMetaEx(T, BASE, nullptr, __VA_ARGS__)
 
-#define ZTrefEnumWithMetaEx(T, meta, ...) \
-  ZTrefEnumDefineEnum2(T, __VA_ARGS__);   \
-  ZTrefEnumImpWithMetaEx(T, meta, __VA_ARGS__)
+#define ZTrefEnumWithMetaEx(T, BASE, meta, ...) \
+  ZTrefEnumDefineEnum2(T, BASE, __VA_ARGS__);   \
+  ZTrefEnumImpWithMetaEx(T, BASE, meta, __VA_ARGS__)
 
 #define ZTrefFirstArgAsEnumItemDef(P, E) ZTrefFirstRemoveParen(E),
-#define ZTrefEnumDefineEnum2(T, ...)                                      \
-  enum class T {                                                          \
+#define ZTrefEnumDefineEnum2(T, BASE, ...)                                \
+  enum class T : BASE {                                                   \
     ZTrefMsvcExpand(ZTrefMap(ZTrefFirstArgAsEnumItemDef, T, __VA_ARGS__)) \
   }
 
-#define ZTrefEnumImpEx(T, ...) ZTrefEnumImpWithMetaEx(T, 0, __VA_ARGS__)
-#define ZTrefEnumImpWithMetaEx(T, meta, ...)                               \
+#define ZTrefEnumImpEx(T, BASE, ...) ZTrefEnumImpWithMetaEx(T, BASE, 0, __VA_ARGS__)
+#define ZTrefEnumImpWithMetaEx(T, BASE, meta, ...)                         \
   constexpr auto _tref_enum_info(ZTrefRemoveParen(T)**) {                  \
-    return tref::imp::makeEnumInfo<ZTrefRemoveParen(T),                    \
+    return tref::imp::makeEnumInfo<ZTrefRemoveParen(T), BASE,              \
                                    ZTrefCount(__VA_ARGS__)>(               \
-        ZTrefStringify(ZTrefRemoveParen(T)), sizeof(ZTrefRemoveParen(T)),  \
+        ZTrefStringify(ZTrefRemoveParen(T)),                               \
         std::array{ZTrefEnumStringize2(T, __VA_ARGS__)}, std::move(meta)); \
   }
 
@@ -916,6 +932,7 @@ constexpr T string_to_enum(string_view s, T default_) {
 
 using imp::class_fields_v;
 using imp::class_info;
+using imp::class_info_t;
 using imp::class_info_v;
 using imp::ClassInfo;
 using imp::create_subclass;
@@ -958,7 +975,9 @@ using imp::tuple_for_each;
 /// enum
 
 using imp::enum_info;
+using imp::enum_info_t;
 using imp::enum_to_string;
+using imp::is_reflected_enum_v;
 using imp::string_to_enum;
 
 // ex version support meta for enum items.

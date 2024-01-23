@@ -274,24 +274,23 @@ struct FakeEnumMeta {
   int bar;
 };
 
-TrefEnumWithMeta(EnumA,
-                 (FakeEnumMeta{111, 222}),
-                 Ass = 1,
-                 Ban = (int)EnumA::Ass * 3);
+TrefEnumWithMeta(EnumA, int, (FakeEnumMeta{111, 222}), Ass = 1, Ban = (int)EnumA::Ass * 3);
 
+static_assert(is_reflected_enum_v<EnumA>);
 static_assert(enum_to_string(EnumA::Ass) == "Ass");
 static_assert(string_to_enum("Ban", EnumA::Ass) == EnumA::Ban);
 static_assert(enum_info<EnumA>().meta.foo == 111);
 static_assert(enum_info<EnumA>().meta.bar == 222);
 static_assert(enum_info<EnumA>().name == "EnumA");
-static_assert(enum_info<EnumA>().size == sizeof(EnumA));
+static_assert(enum_info<EnumA>().size == 2);
 static_assert(enum_info<EnumA>().items.size() == 2);
+static_assert(std::is_same_v<enum_info_t<EnumA>::base_t, int>);
 static_assert(enum_info<EnumA>().each_item([](auto info) {
   switch (info.value) {
     case EnumA::Ass:
-      return info.name == "Ass";
+      return info.name_view() == "Ass";
     case EnumA::Ban:
-      return info.name == "Ban";
+      return info.name_view() == "Ban";
     default:
       return false;
   }
@@ -299,26 +298,28 @@ static_assert(enum_info<EnumA>().each_item([](auto info) {
 
 // external enum
 
-enum class ExternalEnum { Value1 = 1,
-                          Value2 = Value1 + 4 };
+enum class ExternalEnum : int { Value1 = 1,
+                                Value2 = Value1 + 4 };
 
-TrefExternalEnum(ExternalEnum, Value1, Value2);
+TrefExternalEnum(ExternalEnum, int, Value1, Value2);
 
 static_assert(enum_info<ExternalEnum>().name == "ExternalEnum");
-static_assert(enum_info<ExternalEnum>().size == sizeof(ExternalEnum));
+static_assert(sizeof(enum_info_t<ExternalEnum>::base_t) == sizeof(ExternalEnum));
+static_assert(enum_info<ExternalEnum>().size == 2);
 static_assert(enum_info<ExternalEnum>().items.size() == 2);
 
 // enum in template (both name and value contains comma)
 
 template <typename, typename>
 struct TestExternalTemplateInnerEnum {
-  enum class InnerEnum { ValX = 1,
-                         ValY = ValX + 10 };
+  enum class InnerEnum : int { ValX = 1,
+                               ValY = ValX + 10 };
 };
 
 // enum value is not necessary to external enum, here just for test.
 TrefExternalEnum(
     (TestExternalTemplateInnerEnum<int, int>::InnerEnum),
+    int,
     ValX = 1,
     (ValY = (int)TestExternalTemplateInnerEnum<int, int>::InnerEnum::ValX +
             10));
@@ -341,7 +342,7 @@ static_assert(
 struct DataWithEnumMemType {
   TrefType(DataWithEnumMemType);
 
-  TrefMemberEnum(EnumF, ValA = 1, ValB = 12);
+  TrefMemberEnum(EnumF, int, ValA = 1, ValB = 12);
   TrefMemberType(EnumF);
 };
 
@@ -360,7 +361,7 @@ struct CustomEnumItem {
   int         otherMetaData = 0;
 };
 
-TrefEnumEx(EnumValueMetaTest,
+TrefEnumEx(EnumValueMetaTest, int,
            (TestA,
             (CustomEnumItem{"Desc for A Test", "Comment for A Test", 11})),
            (TestB,
@@ -382,9 +383,9 @@ static_assert(enum_info<EnumValueMetaTest>().items[1].meta.otherMetaData == 22);
 // meta for values of enum in class
 
 struct TestInnerEnumValueWithMeta {
-  TrefMemberEnumEx(EnumValueWithMeta, (EnumA, "Enum A"sv), (EnumB, "Enum B"sv));
+  TrefMemberEnumEx(EnumValueWithMeta, int, (EnumA, "Enum A"sv), (EnumB, "Enum B"sv));
 
-  TrefMemberEnumEx(EnumValueWithMeta2,
+  TrefMemberEnumEx(EnumValueWithMeta2, int,
                    (EnumA, (CustomEnumItem{"desc for a", "comment for a", 11})),
                    (EnumB,
                     (CustomEnumItem{"desc for b", "comment for b", 22})));
@@ -421,7 +422,7 @@ constexpr auto processB(TestEnumStaticDispatching v) {
   return 222;
 }
 
-TrefEnumEx(TestEnumStaticDispatching, (EnumA, &processA), (EnumB, &processB));
+TrefEnumEx(TestEnumStaticDispatching, int, (EnumA, &processA), (EnumB, &processB));
 
 static_assert([] {
   constexpr auto c = TestEnumStaticDispatching::EnumA;
@@ -435,8 +436,7 @@ template <typename T>
 void DumpEnum() {
   printf("========= Enum Members of %s ======\n", enum_info<T>().name.data());
   enum_info<T>().each_item([](auto info) {
-    printf("name: %.*s, val: %d\n", (int)info.name.size(), info.name.data(),
-           (int)info.value);
+    printf("name: %s, val: %d\n", info.name, (int)info.value);
     return true;
   });
   puts("==================");
