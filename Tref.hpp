@@ -828,14 +828,12 @@ using enum_info_t = decltype(enum_info_v<T>);
 
 // Reflect enum items of already defined enum.
 #define ZTrefEnumImp(T, BASE, ...) ZTrefEnumImpWithMeta(T, BASE, nullptr, __VA_ARGS__)
-#define ZTrefEnumImpWithMeta(T, BASE, meta, ...)                                   \
-  constexpr auto _tref_enum_info(ZTrefRemoveParen(T)**) {                          \
-    return tref::imp::EnumInfo<ZTrefRemoveParen(T), BASE, ZTrefCount(__VA_ARGS__), \
-                               decltype(meta), std::nullptr_t>{                    \
-        ZTrefStringify(ZTrefRemoveParen(T)),                                       \
-        {ZTrefEnumStringize(T, __VA_ARGS__)},                                      \
-        ZTrefCount(__VA_ARGS__),                                                   \
-        std::move(meta)};                                                          \
+#define ZTrefEnumImpWithMeta(T, BASE, meta, ...)                                        \
+  constexpr auto _tref_enum_info(ZTrefRemoveParen(T)**) {                               \
+    return tref::imp::makeEnumInfo<ZTrefRemoveParen(T), BASE, ZTrefCount(__VA_ARGS__)>( \
+        ZTrefStringify(ZTrefRemoveParen(T)),                                            \
+        std::array{ZTrefEnumStringize(T, __VA_ARGS__)},                                 \
+        std::move(meta));                                                               \
   }
 
 #define ZTrefEnumStringize(P, ...) \
