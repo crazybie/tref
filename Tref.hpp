@@ -456,6 +456,8 @@ struct ClassInfo {
   // Iterate through the subclasses recursively.
   // @param F: [](ClassInfo info, int level) -> bool, return false to stop the
   // iterating.
+  //
+  // NOTE: must call this function in a template function.
   template <typename F>
   constexpr bool each_subclass(F&& f, int level = 0) const {
     return each_state<T, SubclassTag>([&](auto info) {
@@ -465,6 +467,7 @@ struct ClassInfo {
     });
   }
 
+  // NOTE: must call this function in a template function.
   constexpr auto get_subclass_index(string_view name) const {
     int  idx = 0;
     bool found = false;
@@ -479,6 +482,7 @@ struct ClassInfo {
     return found ? idx : -1;
   }
 
+  // NOTE: must call this function in a template function.
   template <typename Sub>
   constexpr auto get_subclass_index() const {
     int  idx = 0;
@@ -495,11 +499,13 @@ struct ClassInfo {
     return found ? idx : -1;
   }
 
+  // NOTE: must call this function in a template function.
   template <size_t index>
   constexpr auto get_subclass() const {
     return get<index>(get_subclasses());
   }
 
+  // NOTE: must call this function in a template function.
   template <typename F>
   constexpr auto get_subclass(int index, F&& f) const {
     int  idx = 0;
@@ -515,6 +521,7 @@ struct ClassInfo {
     return found;
   }
 
+  // NOTE: must call this function in a template function.
   constexpr auto get_subclasses() const {
     constexpr auto f = get_all_state<T, SubclassTag>();
     constexpr int  cnt = tuple_size_v<decltype(f)>;
@@ -531,6 +538,7 @@ struct ClassInfo {
     }
   }
 
+  // NOTE: must call this function in a template function.
   template <typename FilterMeta, typename F>
   constexpr bool each_subclass_with_meta(F&& f) const {
     return each_subclass([&](auto info, int level) {
@@ -568,6 +576,7 @@ constexpr auto each_field(F&& f) {
   return tuple_for_each(class_fields_v<T>, f);
 }
 
+// NOTE: must call this function in a template function.
 template <typename T, typename F>
 constexpr auto each_subclass(F&& f) {
   return class_info_v<T>.each_subclass(f);
