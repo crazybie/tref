@@ -267,6 +267,28 @@ static_assert(class_info<OverloadingTest>().each_field([](auto info, int) {
 //////////////////////////////////////////////////////////////////////////
 // enum test
 
+TrefEnum(SimpleEnum, int, None, V1, V2);
+
+static_assert(enum_to_string(SimpleEnum::V1) == "V1");
+static_assert(enum_to_string(SimpleEnum::V2) == "V2");
+static_assert(string_to_enum("V1", SimpleEnum::None) == SimpleEnum::V1);
+static_assert(string_to_enum("V2", SimpleEnum::None) == SimpleEnum::V2);
+
+// iterate all enums defined in group.
+
+struct MyEnumGroup {};
+TrefEnumRegister(SimpleEnum, MyEnumGroup);
+
+TrefEnum(SimpleEnum2, int, None, V1, V2);
+TrefEnumRegister(SimpleEnum2, MyEnumGroup);
+
+static_assert(each_enum<MyEnumGroup>([](auto e) {
+  using enum_t = typename decltype(e)::type;
+  constexpr auto info = enum_info_v<enum_t>;
+  static_assert(info.name == "SimpleEnum" || info.name == "SimpleEnum2");
+  return true;
+}));
+
 // global enum
 
 struct FakeEnumMeta {
@@ -361,11 +383,7 @@ struct CustomEnumItem {
   int         otherMetaData = 0;
 };
 
-TrefEnumEx(EnumValueMetaTest, int,
-           (TestA,
-            (CustomEnumItem{"Desc for A Test", "Comment for A Test", 11})),
-           (TestB,
-            (CustomEnumItem{"Desc for B Test", "Comment for B Test", 22})));
+TrefEnumEx(EnumValueMetaTest, int, (TestA, (CustomEnumItem{"Desc for A Test", "Comment for A Test", 11})), (TestB, (CustomEnumItem{"Desc for B Test", "Comment for B Test", 22})));
 
 static_assert(enum_info<EnumValueMetaTest>().items[0].meta.desc ==
               "Desc for A Test");
@@ -385,10 +403,7 @@ static_assert(enum_info<EnumValueMetaTest>().items[1].meta.otherMetaData == 22);
 struct TestInnerEnumValueWithMeta {
   TrefMemberEnumEx(EnumValueWithMeta, int, (EnumA, "Enum A"sv), (EnumB, "Enum B"sv));
 
-  TrefMemberEnumEx(EnumValueWithMeta2, int,
-                   (EnumA, (CustomEnumItem{"desc for a", "comment for a", 11})),
-                   (EnumB,
-                    (CustomEnumItem{"desc for b", "comment for b", 22})));
+  TrefMemberEnumEx(EnumValueWithMeta2, int, (EnumA, (CustomEnumItem{"desc for a", "comment for a", 11})), (EnumB, (CustomEnumItem{"desc for b", "comment for b", 22})));
 };
 
 static_assert(

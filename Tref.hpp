@@ -43,6 +43,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #error "Need a c++17 compiler"
 #endif
 
+#ifndef TrefMaxElems
+#define TrefMaxElems 255
+#endif
+
 namespace tref {
 namespace imp {
 
@@ -257,60 +261,60 @@ struct Metas : Meta... {
 ///
 //////////////////////////////////////////////////////////////////////////
 
-template <int N = 255>
-struct Id : Id<N - 1> {
+template <int N = TrefMaxElems>
+struct Slot : Slot<N - 1> {
   enum { value = N };
 };
 
 template <>
-struct Id<0> {
+struct Slot<0> {
   enum { value = 0 };
 };
 
 constexpr auto invalid_index = 0;
 
 template <typename C, typename Tag>
-tuple<Id<invalid_index>> _tref_state(C**, Tag, Id<0> id);
+tuple<Slot<invalid_index>> _tref_slot(C**, Tag, Slot<0> slot);
 
-#define ZTrefStateCnt(C, Tag)                                                \
-  std::tuple_element_t<0,                                                    \
-                       decltype(_tref_state((ZTrefRemoveParen(C)**)0, Tag(), \
-                                            tref::imp::Id<>{}))>::value
+template <typename T>
+constexpr auto slot_cnt = std::tuple_element_t<0, T>::value;
 
-#define ZTrefStatePush(C, Tag, ...)                                       \
-  constexpr auto _tref_state(ZTrefRemoveParen(C)**, Tag,                  \
-                             tref::imp::Id<ZTrefStateCnt(C, Tag) + 1> id) \
-      ZTrefReturn(std::tuple(id, __VA_ARGS__))
+#define ZTrefSlotCnt(C, Tag) \
+  tref::imp::slot_cnt<decltype(_tref_slot((ZTrefRemoveParen(C)**)0, Tag{}, tref::imp::Slot<>{}))>
 
-template <class C, class Tag, int idx>
-constexpr auto get_state() {
-  return _tref_state((C**)0, Tag{}, Id<idx>{});
+#define ZTrefSlotPush(C, Tag, ...)                                                                      \
+  constexpr auto _tref_slot(ZTrefRemoveParen(C)**, Tag, tref::imp::Slot<ZTrefSlotCnt(C, Tag) + 1> slot) \
+      ZTrefReturn(std::tuple(slot, __VA_ARGS__))
+
+template <class C, class Tag, int Idx>
+constexpr auto slot_data() {
+  return get<1>(_tref_slot((C**)0, Tag{}, Slot<Idx>{}));
 }
 
 template <class C, class Tag, class F, size_t... Is>
-constexpr bool state_fold(index_sequence<Is...>, F&& f) {
-  return (f(get<1>(get_state<C, Tag, Is>())) && ...);
+constexpr bool slots_data_fold(index_sequence<Is...>, F&& f) {
+  return (f(slot_data<C, Tag, Is>()) && ...);
 }
 
 template <typename C, typename Tag, typename F>
-constexpr bool each_state(F f) {
-  constexpr auto cnt = ZTrefStateCnt(C, Tag);
+constexpr bool each_slots_data(F f) {
+  constexpr auto cnt = ZTrefSlotCnt(C, Tag);
   if constexpr (cnt > 0) {
-    return state_fold<C, Tag>(tail(make_index_sequence<cnt + 1>{}), f);
+    return slots_data_fold<C, Tag>(tail(make_index_sequence<cnt + 1>{}), f);
   } else {
     return true;
   }
 }
 
 template <class C, class Tag, size_t... Is>
-constexpr auto get_state_fold(index_sequence<Is...>) {
-  return make_tuple(get<1>(get_state<C, Tag, Is>())...);
+constexpr auto all_slots_data_fold(index_sequence<Is...>) {
+  return make_tuple(slot_data<C, Tag, Is>()...);
 }
 
 template <typename C, typename Tag>
-constexpr auto get_all_state() {
-  constexpr auto cnt = ZTrefStateCnt(C, Tag);
-  return get_state_fold<C, Tag>(tail(make_index_sequence<cnt + 1>{}));
+constexpr auto all_slots_data() {
+  constexpr auto cnt = ZTrefSlotCnt(C, Tag);
+  return all_slots_data_fold<C, Tag>(tail(make_index_sequence<cnt + 1>{}));
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -328,8 +332,7 @@ struct SubclassTag {};
 void _tref_class_info(void*);
 
 template <typename T>
-constexpr auto is_reflected_v =
-    !std::is_same_v<decltype(_tref_class_info((T**)0)), void>;
+constexpr auto is_reflected_v = !std::is_same_v<decltype(_tref_class_info((T**)0)), void>;
 
 // Use function to delay the evaluation. (for non-conformance mode of MSVC)
 template <typename T>
@@ -348,8 +351,7 @@ using class_info_t = decltype(class_info_v<T>);
   typename decltype(tref::imp::class_info<ZTrefRemoveParen(T)>())::base_t
 
 template <typename T>
-constexpr auto has_base_class_v =
-    is_reflected_v<T> && !std::is_same_v<ZTrefBaseOf(T), DummyBase>;
+constexpr auto has_base_class_v = is_reflected_v<T> && !std::is_same_v<ZTrefBaseOf(T), DummyBase>;
 
 template <typename TP, size_t... I>
 constexpr auto unpack_subclass(TP, index_sequence<I...>) {
@@ -398,7 +400,7 @@ struct ClassInfo {
   }
 
   constexpr auto get_fields() const {
-    auto f = get_all_state<T, FieldTag>();
+    auto f = all_slots_data<T, FieldTag>();
     if constexpr (!is_same_v<Base, DummyBase>) {
       return tuple_cat(class_info<Base>().get_fields(), f);
     } else {
@@ -408,8 +410,7 @@ struct ClassInfo {
 
   template <typename Tag, typename F>
   constexpr bool each(F&& f, int level = 0) const {
-    auto next =
-        each_state<T, Tag>([&](const auto& info) { return f(info, level); });
+    auto next = each_slots_data<T, Tag>([&](const auto& info) { return f(info, level); });
     if (next)
       if constexpr (!is_same_v<Base, DummyBase>)
         return class_info<Base>().template each<Tag>(f, level + 1);
@@ -460,7 +461,7 @@ struct ClassInfo {
   // NOTE: must call this function in a template function.
   template <typename F>
   constexpr bool each_subclass(F&& f, int level = 0) const {
-    return each_state<T, SubclassTag>([&](auto info) {
+    return each_slots_data<T, SubclassTag>([&](auto info) {
       using S = typename decltype(info)::type;
       return f(class_info<S>(), level) &&
              class_info<S>().each_subclass(f, level + 1);
@@ -523,7 +524,7 @@ struct ClassInfo {
 
   // NOTE: must call this function in a template function.
   constexpr auto get_subclasses() const {
-    constexpr auto f = get_all_state<T, SubclassTag>();
+    constexpr auto f = all_slots_data<T, SubclassTag>();
     constexpr int  cnt = tuple_size_v<decltype(f)>;
     constexpr auto idx = make_index_sequence<cnt>();
     if constexpr (cnt) {
@@ -606,7 +607,7 @@ T* create_subclass(int subclassId, Args&&... args) {
 #define ZTrefClassMeta(T, Base, meta) friend ZTrefClassMetaImp(T, Base, meta)
 
 #define ZTrefPushFieldImp(T, Tag, name, val, meta) \
-  ZTrefStatePush(T, Tag, tref::imp::FieldInfo{id.value, name, val, meta})
+  ZTrefSlotPush(T, Tag, tref::imp::FieldInfo{slot.value, name, val, meta})
 
 //////////////////////////////////////////////////////////////////////////
 ///
@@ -633,9 +634,8 @@ struct get_parent<T, void_t<typename T::__base_of_child_t>> {
 // NOTE: can't put into class:
 // 1. template overloads to increase the id will not work on clang.
 // 1. friend function unrelated to the current class may be removed by clang.
-#define ZTrefSubTypeImp(T, Base)                         \
-  ZTrefStatePush(Base, tref::imp::SubclassTag,           \
-                 tref::imp::Type<ZTrefRemoveParen(T)>{}) \
+#define ZTrefSubTypeImp(T, Base)                                                      \
+  ZTrefSlotPush(Base, tref::imp::SubclassTag, tref::imp::Type<ZTrefRemoveParen(T)>{}) \
       ZTrefAllowSemicolon(ZTrefRemoveParen(T))
 
 // fix lint issue: `TrefSubType(T);` : empty statement.
@@ -814,14 +814,21 @@ constexpr auto enum_info() {
 }
 
 template <typename T>
-constexpr auto is_reflected_enum_v =
-    !std::is_same_v<decltype(_tref_enum_info((T**)0)), void>;
+constexpr auto is_reflected_enum_v = !std::is_same_v<decltype(_tref_enum_info((T**)0)), void>;
 
 template <typename T>
 constexpr auto enum_info_v = enum_info<T>();
 
 template <typename T>
 using enum_info_t = decltype(enum_info_v<T>);
+
+struct Enums {};
+#define ZTrefEnumRegister(T, Tag) ZTrefSlotPush(tref::imp::Enums, Tag, tref::imp::Type<T>{})
+
+template <typename Tag, typename F>
+constexpr bool each_enum(F f) {
+  return each_slots_data<Enums, Tag>([&](const auto& info) { return f(info); });
+}
 
 // Use it out of class.
 #define ZTrefEnum(T, BASE, ...) ZTrefEnumWithMeta(T, BASE, nullptr, __VA_ARGS__)
@@ -981,9 +988,12 @@ using imp::tuple_for_each;
 
 /// enum
 
+using imp::each_enum;
 using imp::enum_info;
 using imp::enum_info_t;
 using imp::enum_to_string;
+using imp::EnumInfo;
+using imp::EnumItem;
 using imp::is_reflected_enum_v;
 using imp::string_to_enum;
 
@@ -1001,6 +1011,7 @@ using imp::string_to_enum;
 #define TrefExternalEnumEx ZTrefEnumImpEx
 #define TrefExternalEnumWithMeta ZTrefEnumImpWithMeta
 #define TrefExternalEnumWithMetaEx ZTrefEnumImpWithMetaEx
+#define TrefEnumRegister ZTrefEnumRegister
 
 }  // namespace tref
 
