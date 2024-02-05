@@ -540,6 +540,11 @@ struct ClassInfo {
   }
 
   // NOTE: must call this function in a template function.
+  constexpr auto get_direct_subclasses() const {
+    return all_slots_data<T, SubclassTag>();
+  }
+
+  // NOTE: must call this function in a template function.
   template <typename FilterMeta, typename F>
   constexpr bool each_subclass_with_meta(F&& f) const {
     return each_subclass([&](auto info, int level) {
